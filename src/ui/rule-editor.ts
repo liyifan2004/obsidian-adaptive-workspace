@@ -10,6 +10,7 @@ import type {
 import type { CommandLike, PluginManifestLike } from "../core/internal-api";
 import { CommandSuggestModal, PluginSuggestModal } from "./pickers";
 import { isLikelyToggleCommand } from "../actions/command-action";
+import { PLUGIN_ID } from "../config";
 
 export interface RuleEditorHost {
   conditionRegistry: ConditionRegistry;
@@ -352,6 +353,12 @@ export class RuleEditorModal extends Modal {
     }
     for (const a of this.draft.actions) {
       if (!a.target) errors.push(`Action "${a.type}" has no target.`);
+      if (
+        (a.type === "enablePlugin" || a.type === "disablePlugin") &&
+        a.target === PLUGIN_ID
+      ) {
+        errors.push("Adaptive Workspace cannot manage itself (self-protection).");
+      }
     }
     if (this.draft.actions.length === 0) errors.push("Add at least one action.");
     this.errorEl.empty();
