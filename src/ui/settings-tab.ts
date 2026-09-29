@@ -77,7 +77,10 @@ export class AdaptiveSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Enable Adaptive Workspace")
-      .setDesc("When off, no rules are evaluated and nothing is changed.")
+      .setDesc(
+        "When off, no rules are evaluated and nothing is changed. Plugin states produced while it " +
+          "was enabled are kept as-is — this plugin never restores them on disable or uninstall.",
+      )
       .addToggle((t) => {
         t.setValue(settings.enabled).onChange(async (v) => {
           settings.enabled = v;

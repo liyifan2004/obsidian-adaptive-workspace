@@ -1,6 +1,28 @@
 # Adaptive Workspace 测试计划
 
-版本：0.1.0（MVP）　　状态标记：[自动化] 单元测试已覆盖，`npm run verify` 全绿；[待验证] 需真机 Obsidian 手工执行。
+版本：0.1.0（MVP）　　状态标记：[自动化] 单元测试已覆盖；[已验证-真机] 2026-09-29 单屏自动化验收通过；[待验证] 需多显示器硬件。
+
+## 零、真机验收结果（2026-09-09，单屏，Obsidian 1.13.7，Test 仓库）
+
+验收方法：ctypes 驱动真实窗口 + 观测 community-plugins.json 落盘状态 + "状态编码法"（不同 state 各编码一个插件组合，从结果反推插件看到的 state，可定位故障层）。
+
+| 项目 | 结果 | 备注 |
+| --- | --- | --- |
+| 窗口链路 normal→maximized→normal→maximized | [已验证-真机] PASS | ON→OFF→ON→OFF→ON 真实生效，无 ON→OFF 中间态残留 |
+| 纯移动无 resize | [已验证-真机] PASS | 状态稳定，无误动作 |
+| resize 防抖（20 次快速拖动） | [已验证-真机] PASS | 无启停抖动 |
+| 全屏三态独立（编码法） | [已验证-真机] PASS | normal=10 / maximized=01 / fullscreen=11 三种编码全部与 OS 实际状态 MATCH |
+| Obsidian 重启幂等 | [已验证-真机] PASS | 重启后无状态抖动，Current=Desired→无动作 |
+| 单屏 identity 解析 | [已验证-真机] PASS | 判定 internal（heuristic-primary 路径，Auto 无手动映射） |
+| 外接屏链路 / 双外屏 / 主屏切换 / DPI | [待验证] | 需要外接显示器硬件，见 S1~S4、E2~E5 |
+
+验收中记录的一次"疑似失败"（按故障定位格式）：
+- 现象：F11 后 fullscreen 规则未命中（第 3 轮 B 步 FAIL）
+- 当前显示器：单显示器 (0,0) 1755×1097 primary；Window state：OS 侧 normal（F11 未生效）
+- Display identity：internal / detection：heuristic（单屏）
+- Matched Rule：enc-normal 命中（而非 enc-fullscreen）；Current/Desired：均为 (ON,OFF)，无 Action
+- Console error：无
+- 定位结论：**测试工具问题**——F11 键送到了错误窗口（GetForegroundWindow≠目标 hwnd，Windows 前台锁）。ALT 技巧强抢焦点后复测，fullscreen 编码 (ON,ON) 立即命中。插件 Window Detection / Rule Engine 层无缺陷。
 
 ## 一、核心流程端到端测试（手工，按顺序执行）
 

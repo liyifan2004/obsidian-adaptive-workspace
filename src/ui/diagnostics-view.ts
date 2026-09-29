@@ -145,6 +145,12 @@ export class DiagnosticsView extends ItemView {
 
     /* ---- Managed plugins ---- */
     el.createEl("h3", { text: "Managed Plugins" });
+    row(
+      el,
+      "Note",
+      "States persist when Adaptive Workspace is disabled/uninstalled — nothing is restored.",
+      "aw-warn",
+    );
     if (snap.ledger.length === 0) {
       row(el, "Managed", "none yet");
     }
