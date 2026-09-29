@@ -1,0 +1,85 @@
+/* Adaptive Workspace — minimal, native-looking styles. */
+
+.aw-desc {
+  color: var(--text-muted);
+}
+
+.aw-empty {
+  color: var(--text-muted);
+  padding: 8px 0;
+}
+
+/* Settings: unverified display detection callout (hairline + weight only). */
+.aw-callout {
+  border-left: 2px solid var(--text-muted);
+  padding: 4px 0 4px 12px;
+  margin: 8px 0;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+.aw-callout-title {
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+/* Rule editor modal */
+.aw-rule-editor {
+  min-width: 640px;
+}
+
+.aw-rows .aw-row {
+  padding: 2px 0;
+}
+
+.aw-error {
+  color: var(--text-error);
+  font-size: var(--font-ui-small);
+  padding: 4px 0;
+}
+
+/* Diagnostics */
+.aw-diag-row {
+  display: flex;
+  gap: 12px;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+  font-size: var(--font-ui-small);
+}
+
+.aw-diag-label {
+  font-weight: 600;
+  min-width: 180px;
+  flex-shrink: 0;
+}
+
+.aw-diag-value {
+  color: var(--text-muted);
+  word-break: break-word;
+}
+
+.aw-warn .aw-diag-value,
+.aw-diag-row.aw-warn .aw-diag-value {
+  color: var(--text-normal);
+  font-weight: 600;
+}
+
+/* SuggestModal pickers */
+.aw-pick-title {
+  font-weight: 600;
+}
+
+.aw-pick-id {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+
+.aw-pick-desc {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+
+.aw-pick-warn {
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+}

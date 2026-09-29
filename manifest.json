@@ -1,0 +1,9 @@
+{
+  "id": "adaptive-workspace",
+  "name": "Adaptive Workspace",
+  "version": "0.1.0",
+  "minAppVersion": "1.4.0",
+  "description": "Automatically adapt your Obsidian workspace based on display, window, and environment.",
+  "author": "liyifan2004",
+  "isDesktopOnly": true
+}

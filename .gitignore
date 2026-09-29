@@ -1,0 +1,15 @@
+node_modules/
+*.log
+
+# AI 助手工作文件夹 —— 绝不入库
+.workbuddy/
+.claude/
+.agents/
+
+# 密钥与个人数据 —— 绝不入库
+data.json
+
+# 构建产物（发版走 Release 附件）
+main.js
+dist/
+*.zip
