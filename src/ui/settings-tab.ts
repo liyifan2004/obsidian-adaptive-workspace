@@ -65,18 +65,23 @@ export class AdaptiveSettingTab extends PluginSettingTab {
   }
 
   override display(): void {
+    this.refresh();
+  }
+
+  /** Re-render without going through the deprecated display() call sites. */
+  refresh(): void {
     const { containerEl } = this;
     const settings = this.host.pluginSettings;
     containerEl.empty();
 
-    containerEl.createEl("h2", { text: "Adaptive Workspace" });
+    ;
     containerEl.createEl("p", {
       text: "Automatically adapt your Obsidian workspace based on your display, window, and environment.",
       cls: "aw-desc",
     });
 
     new Setting(containerEl)
-      .setName("Enable Adaptive Workspace")
+      .setName("Enable adaptive workspace")
       .setDesc(
         "When off, no rules are evaluated and nothing is changed. Plugin states produced while it " +
           "was enabled are kept as-is — this plugin never restores them on disable or uninstall.",
@@ -108,14 +113,14 @@ export class AdaptiveSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Diagnostics")
       .setDesc("Inspect the live environment, matched rules and managed plugins.")
-      .addButton((b) => b.setButtonText("Open Diagnostics").onClick(() => this.host.openDiagnostics()))
+      .addButton((b) => b.setButtonText("Open diagnostics").onClick(() => this.host.openDiagnostics()))
       .addButton((b) => b.setButtonText("Evaluate now").onClick(() => this.host.runEvaluateNow()));
   }
 
   /* ---------------- display identity ---------------- */
 
   private renderDisplaySection(containerEl: HTMLElement, settings: Settings): void {
-    containerEl.createEl("h3", { text: "Display Identity" });
+    new Setting(containerEl).setName("Display identity").setHeading();
     containerEl.createEl("p", {
       text:
         "Tell Adaptive Workspace which display is your laptop screen. Auto keeps automatic detection; " +
@@ -174,7 +179,7 @@ export class AdaptiveSettingTab extends PluginSettingTab {
           }
           await this.host.saveSettings();
           this.host.runEvaluateNow();
-          this.display();
+          this.refresh();
         });
       });
     }
@@ -183,26 +188,28 @@ export class AdaptiveSettingTab extends PluginSettingTab {
   /* ---------------- rules ---------------- */
 
   private renderRuleSection(containerEl: HTMLElement, settings: Settings): void {
-    containerEl.createEl("h3", { text: "Rules" });
+    new Setting(containerEl).setName("Rules").setHeading();
     new Setting(containerEl).addButton((b) =>
-      b.setButtonText("New Rule").setCta().onClick(() => {
+      b.setButtonText("New rule").setCta().onClick(() => {
         this.host.openRuleEditor(createDefaultRule());
       }),
     );
 
     const listEl = containerEl.createDiv({ cls: "aw-rule-list" });
-    renderRuleList(listEl, settings.rules, this.host.conditionRegistry, this.host.actionRegistry, {
+    renderRuleList(this.app, listEl, settings.rules, this.host.conditionRegistry, this.host.actionRegistry, {
       onEdit: (rule) => this.host.openRuleEditor(rule),
-      onToggle: async (rule, enabled) => {
+      onToggle: (rule, enabled) => {
         rule.enabled = enabled;
-        await this.host.saveSettings();
-        this.host.runEvaluateNow();
+        void this.host.saveSettings().then(() => {
+          this.host.runEvaluateNow();
+        });
       },
-      onDelete: async (rule) => {
+      onDelete: (rule) => {
         settings.rules = settings.rules.filter((r) => r.id !== rule.id);
-        await this.host.saveSettings();
-        this.host.runEvaluateNow();
-        this.display();
+        void this.host.saveSettings().then(() => {
+          this.host.runEvaluateNow();
+          this.refresh();
+        });
       },
     });
   }

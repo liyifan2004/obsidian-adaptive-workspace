@@ -16,7 +16,7 @@ import { InternalApi } from "./core/internal-api";
 import { EnvironmentDetector } from "./core/environment-detector";
 import { ActionExecutor } from "./core/action-executor";
 import { StateManager } from "./core/state-manager";
-import { evaluateRules, type EvaluationResult } from "./core/rule-engine";
+import { evaluateRules, type EvaluationResult, type PluginDesireInfo } from "./core/rule-engine";
 import { ConditionRegistry } from "./conditions/condition-registry";
 import { displayConditionDef } from "./conditions/display-condition";
 import { windowConditionDef } from "./conditions/window-condition";
@@ -213,27 +213,26 @@ export default class AdaptiveWorkspacePlugin
   }
 
   refreshSettingsTab(): void {
-    // display() is public on PluginSettingTab and re-renders the panel.
-    this.settingsTab?.display();
+    this.settingsTab?.refresh();
   }
 
   /* ---------------- UI host: diagnostics ---------------- */
 
-  openDiagnostics(): Promise<void> {
-    return this.activateDiagnosticsView();
+  openDiagnostics(): void {
+    void this.activateDiagnosticsView();
   }
 
   private async activateDiagnosticsView(): Promise<void> {
     const existing = this.app.workspace.getLeavesOfType(VIEW_TYPE_DIAGNOSTICS);
     const first = existing[0];
     if (first) {
-      this.app.workspace.revealLeaf(first);
+      void this.app.workspace.revealLeaf(first);
       return;
     }
     const leaf = this.app.workspace.getRightLeaf(false);
     if (!leaf) return;
     await leaf.setViewState({ type: VIEW_TYPE_DIAGNOSTICS, active: true });
-    this.app.workspace.revealLeaf(leaf);
+    void this.app.workspace.revealLeaf(leaf);
   }
 
   getSnapshot(): DiagnosticsSnapshot {
@@ -242,7 +241,7 @@ export default class AdaptiveWorkspacePlugin
       probe: this.api.probe(),
       state: this.lastState,
       ruleMatches: this.lastResult?.ruleMatches ?? [],
-      pluginDesires: this.lastResult?.pluginDesires ?? new Map(),
+      pluginDesires: this.lastResult?.pluginDesires ?? new Map<string, PluginDesireInfo>(),
       ledger: this.stateManager.getLedger(),
       evaluateLog: this.stateManager.getEvaluateLog(),
       log: this.log.getEntries(),

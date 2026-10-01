@@ -1,4 +1,4 @@
-import { Setting } from "obsidian";
+import { Modal, Setting, type App } from "obsidian";
 import type { Rule } from "../types/rule";
 import type { ConditionRegistry } from "../conditions/condition-registry";
 import type { ActionRegistry } from "../actions/action-registry";
@@ -8,6 +8,32 @@ export interface RuleListCallbacks {
   onEdit(rule: Rule): void;
   onToggle(rule: Rule, enabled: boolean): void;
   onDelete(rule: Rule): void;
+}
+
+class ConfirmDeleteModal extends Modal {
+  constructor(
+    app: App,
+    private readonly message: string,
+    private readonly onConfirm: () => void,
+  ) {
+    super(app);
+  }
+
+  override onOpen(): void {
+    this.contentEl.createEl("p", { text: this.message });
+    new Setting(this.contentEl)
+      .addButton((b) =>
+        b.setButtonText("Cancel").onClick(() => {
+          this.close();
+        }),
+      )
+      .addButton((b) =>
+        b.setButtonText("Delete").onClick(() => {
+          this.close();
+          this.onConfirm();
+        }),
+      );
+  }
 }
 
 function operatorLabel(op: Operator): string {
@@ -53,6 +79,7 @@ export function summarizeRule(
 }
 
 export function renderRuleList(
+  app: App,
   container: HTMLElement,
   rules: Rule[],
   conditions: ConditionRegistry,
@@ -82,11 +109,13 @@ export function renderRuleList(
       b.setIcon("trash");
       b.setTooltip("Delete rule");
       b.onClick(() => {
-        const ok = window.confirm(
-          `Delete rule "${rule.name}"?\n\nIts ${rule.conditions.length} condition(s) and ` +
+        new ConfirmDeleteModal(
+          app,
+          `Delete rule "${rule.name}"? ` +
+            `Its ${rule.conditions.length} condition(s) and ` +
             `${rule.actions.length} action(s) will be removed permanently. This cannot be undone.`,
-        );
-        if (ok) callbacks.onDelete(rule);
+          () => callbacks.onDelete(rule),
+        ).open();
       });
     });
   }

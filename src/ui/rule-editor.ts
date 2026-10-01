@@ -1,7 +1,7 @@
 import { Modal, Setting, type App } from "obsidian";
 import type { Action, ActionTrigger } from "../types/action";
 import type { Condition, Operator } from "../types/condition";
-import type { ConditionLogic, Rule } from "../types/rule";
+import type { Rule } from "../types/rule";
 import type { ActionRegistry } from "../actions/action-registry";
 import type {
   ConditionPropertyDef,
@@ -55,7 +55,7 @@ export class RuleEditorModal extends Modal {
     super.onOpen();
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.createEl("h2", { text: "Edit Rule" });
+    contentEl.createEl("h2", { text: "Edit rule" });
 
     new Setting(contentEl).setName("Rule name").addText((t) => {
       t.setValue(this.draft.name).onChange((v) => {
@@ -65,12 +65,12 @@ export class RuleEditorModal extends Modal {
 
     new Setting(contentEl)
       .setName("Condition logic")
-      .setDesc("ALL conditions must hold (AND) or ANY condition (OR).")
+      .setDesc("All conditions must hold (and) or any condition (or).")
       .addDropdown((d) => {
-        d.addOption("AND", "AND — all conditions");
-        d.addOption("OR", "OR — any condition");
+        d.addOption("AND", "And — all conditions");
+        d.addOption("OR", "Or — any condition");
         d.setValue(this.draft.conditionLogic).onChange((v) => {
-          this.draft.conditionLogic = (v === "OR" ? "OR" : "AND") as ConditionLogic;
+          this.draft.conditionLogic = v === "OR" ? "OR" : "AND";
         });
       });
 
@@ -321,7 +321,7 @@ export class RuleEditorModal extends Modal {
       if (action.target) {
         const cmd = this.host.listCommands().find((c) => c.id === action.target);
         if (cmd && isLikelyToggleCommand(cmd.id, cmd.name)) {
-          setting.setDesc("⚠ This looks like a Toggle command — prefer the default “onEnter” trigger.");
+          setting.setDesc("⚠ This looks like a toggle command — prefer the default enter trigger.");
         }
       }
     }

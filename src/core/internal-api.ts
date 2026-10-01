@@ -146,7 +146,7 @@ export class InternalApi {
   private probeCache: ApiProbe | null = null;
 
   constructor(app: App) {
-    this.appInternals = app as unknown as AppInternals;
+    this.appInternals = app;
     const found = findRemote();
     this.remote = found.remote;
     this.remoteVia = found.via;

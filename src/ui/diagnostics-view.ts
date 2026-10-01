@@ -44,7 +44,7 @@ export class DiagnosticsView extends ItemView {
   }
 
   override getDisplayText(): string {
-    return "Adaptive Workspace Diagnostics";
+    return "Adaptive workspace diagnostics";
   }
 
   override getIcon(): string {
@@ -144,7 +144,7 @@ export class DiagnosticsView extends ItemView {
     }
 
     /* ---- Managed plugins ---- */
-    el.createEl("h3", { text: "Managed Plugins" });
+    el.createEl("h3", { text: "Managed plugins" });
     row(
       el,
       "Note",
@@ -167,7 +167,7 @@ export class DiagnosticsView extends ItemView {
     }
 
     /* ---- Evaluate log ---- */
-    el.createEl("h3", { text: "Evaluate Log (recent)" });
+    el.createEl("h3", { text: "Evaluate log (recent)" });
     const log = snap.evaluateLog.slice(-8).reverse();
     if (log.length === 0) row(el, "Log", "no evaluations yet");
     for (const entry of log) {
@@ -180,7 +180,7 @@ export class DiagnosticsView extends ItemView {
     }
 
     /* ---- Plugin log ---- */
-    el.createEl("h3", { text: "Plugin Log" });
+    el.createEl("h3", { text: "Plugin log" });
     const entries = [...snap.log].slice(-10).reverse();
     for (const entry of entries) {
       row(

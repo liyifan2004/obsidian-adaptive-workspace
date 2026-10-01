@@ -13,11 +13,11 @@ export interface DebouncedFunction {
  * callers pass the delay from config.ts.
  */
 export function debounce(fn: () => void, ms: number): DebouncedFunction {
-  let timer: ReturnType<typeof setTimeout> | null = null;
+  let timer: number | null = null;
 
   const debounced = (() => {
-    if (timer !== null) clearTimeout(timer);
-    timer = setTimeout(() => {
+    if (timer !== null) window.clearTimeout(timer);
+    timer = window.setTimeout(() => {
       timer = null;
       fn();
     }, ms);
@@ -25,14 +25,14 @@ export function debounce(fn: () => void, ms: number): DebouncedFunction {
 
   debounced.cancel = () => {
     if (timer !== null) {
-      clearTimeout(timer);
+      window.clearTimeout(timer);
       timer = null;
     }
   };
 
   debounced.flush = () => {
     if (timer !== null) {
-      clearTimeout(timer);
+      window.clearTimeout(timer);
       timer = null;
       fn();
     }

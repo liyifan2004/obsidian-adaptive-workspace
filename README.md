@@ -53,7 +53,7 @@ Actions run only when the actual state differs from the desired state. Nothing i
 3. Copy the three files into it.
 4. Enable the plugin in Settings → Community plugins.
 
-Requires Obsidian 1.4.0+ on desktop (Windows / macOS / Linux). Mobile is not supported (`isDesktopOnly`).
+Requires Obsidian 1.7.2+ on desktop (Windows / macOS / Linux). Mobile is not supported (`isDesktopOnly`).
 
 ## 6. Rule Examples
 
@@ -118,7 +118,7 @@ All conditions support operators: equals, not Equals, >, >=, <, <= (boolean/enum
 
 ## 9. Diagnostics
 
-Open via the command palette → *Adaptive Workspace: Open diagnostics*. Sections:
+Open via the command palette → *Adaptive Workspace: Open environment diagnostics*. Sections:
 
 - **Capability**: which Obsidian/Electron APIs are reachable (including the internal-API tier).
 - **Display**: detected displays, identity, detection method (manual / electron-flag / heuristic).
@@ -142,9 +142,11 @@ Open via the command palette → *Adaptive Workspace: Open diagnostics*. Section
 ```bash
 npm install
 npm run dev      # watch build
-npm run verify   # typecheck + lint + test + build (all must pass)
+npm run verify   # typecheck + eslint + stylelint + test + build (all must pass)
 npm run sync     # copy build output into a test vault (edit scripts/sync-to-vault.mjs)
 ```
+
+Lint uses `eslint-plugin-obsidianmd` and `stylelint-config-obsidianmd` (the same rule set as the community-store review bot). One warning is accepted and tracked: `settings-tab/prefer-setting-definitions` — the declarative settings API requires Obsidian 1.13+, while this plugin supports 1.7.2+.
 
 Project layout: `src/core` (environment detection, rule engine, state manager, internal API), `src/conditions` / `src/actions` (typed providers), `src/ui` (settings, rule editor, diagnostics), `test/` (vitest unit tests). Architecture decisions are recorded in `docs/adr/`. See `docs/ARCHITECTURE.md` and `docs/TEST-PLAN.md`.
 
