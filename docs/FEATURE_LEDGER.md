@@ -31,7 +31,7 @@
 | F-019 | 受管插件台账 | Diagnostics | 已实现·已验证 | 自动化 |
 | F-020 | 设置模型与输入净化 | 自动（加载时） | 已实现·已验证 | 自动化 |
 | F-021 | 设置版本迁移 | 自动（加载时） | 已实现·已验证 | 自动化 |
-| F-022 | 内部 API 收口、探测与能力分级 | Diagnostics | 已实现·待核实 | 真机单环境（1.13.x） |
+| F-022 | 内部 API 收口、探测与能力分级 | Diagnostics | 已实现·部分验证 | 自动化（适配层 12 例）+ 真机单环境 |
 | F-023 | 设置页（总开关、启动命令开关、诊断入口） | 设置 | 已实现·部分验证 | 真机 |
 | F-024 | Display Identity 列表与启发式警告 | 设置页 | 已实现·部分验证 | 真机单屏 |
 | F-025 | 规则列表（摘要/启停/编辑/删除确认） | 设置页 | 已实现·部分验证 | 真机 |
@@ -279,9 +279,9 @@
 - **预期行为**：全部 `app.plugins`/`app.commands`/`electron.remote` 访问收口 `internal-api.ts`（ADR 0003）；`probe()` 检测 remote/screen/BrowserWindow/plugins/commands 可用性并缓存；tier：full（全通）/ limited（无 plugins 或 commands）/ degraded（无 remote）；remote 获取支持 `window.electron.remote` → `require('electron').remote` → `require('@electron/remote')` 三级。
 - **实现位置**：`core/internal-api.ts`。
 - **依赖与约束**：Obsidian 1.13.4 / Electron 28 / @electron/remote 2.1.3 已实测；minAppVersion 1.7.2 的兼容性**未逐版本验证**。
-- **状态**：已实现；**待核实**（跨版本/跨平台）。
-- **验证方式**：真机单环境通过；无单测（纯适配层，需 mock）。
-- **已知问题**：`isPluginEnabled` 在 `enabledPlugins` 缺失时以"实例存在"近似；`listCommands` 兜底读 `commands` record；这些近似路径未验证。tier=limited 时规则动作会逐条失败并记 warning（体验可接受但无总提示）。
+- **状态**：已实现；跨版本/跨平台仍**待核实**。
+- **验证方式**：适配层逻辑已自动化（test/internal-api.test.ts 12 例：remote 三级发现、tier 分级、DOM 兜底、插件/命令 shim）；真机单环境（Obsidian 1.13.x）通过。
+- **已知问题**：`isPluginEnabled` 在 `enabledPlugins` 缺失时以"实例存在"近似；`listCommands` 兜底读 `commands` record——这些近似路径行为已单测锁定，但真实 Obsidian 版本差异仍待真机核实。tier=limited 时规则动作会逐条失败并记 warning（体验可接受但无总提示）。
 - **关联**：F-006、F-013、F-015。
 
 ## F. 用户界面
@@ -293,7 +293,7 @@
 - **实现位置**：`ui/settings-tab.ts`。
 - **状态**：已实现·部分验证。
 - **验证方式**：真机操作通过。
-- **已知问题**：变更用 `saveSettings().then(...)` 无 catch，落盘失败静默（优化清单 O-05）；`settings-tab/prefer-setting-definitions` lint 警告已知接受（1.7.2 兼容）。
+- **已知问题**：落盘失败已改为可见（log + Notice，2026-10-23 起，saveSettings 永不 reject）；`settings-tab/prefer-setting-definitions` lint 警告已知接受（1.7.2 兼容）。
 - **关联**：F-004、F-025、F-026。
 
 ### F-024 Display Identity 列表与启发式警告
@@ -388,3 +388,4 @@
 - 确认**无单测**覆盖：environment-detector（F-003/F-004 兜底）、internal-api（F-022）、全部 UI（F-023~F-028）、main.ts 接线（F-005 事件路由、F-018 顶层管道）。
 - 真机已验证：单屏窗口链路、去抖、三态独立、重启幂等、单屏 identity（TEST-PLAN 零节，2026-09-09/09-29）。多显示器场景（D7/D8、E1~E6、S1~S10）**全部待验证**——需外接显示器硬件。
 - 2026-10-23（首批优化后）：新增 test/environment-detector.test.ts（13 例，F-003/F-004/F-001/F-002）与 test/manifest.test.ts（6 例，F-032），vitest 60/60 通过；F-023/F-026/F-028 已知问题随修复更新；F-013 的 `persist` 字段改按 ADR 0005"预留"表述。
+- 2026-10-23（第二批）：新增 test/internal-api.test.ts（12 例，F-022），vitest 72/72 通过；F-022/F-023 验证与已知问题随修复更新。

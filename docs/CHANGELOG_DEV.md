@@ -12,7 +12,8 @@
 | O-02 | P1 | manifest 提交约束无任何本地校验（官方 lint 规则对可用 JSON 解析器全部失效，实测见 R1） | 实测 @eslint/json 与 jsonc-eslint-parser 的 AST 均不匹配规则预期 | `test/manifest.test.ts` 编码提交约束（禁词/格式/必填键/三方版本一致），负向验证通过 | 故意写坏 manifest 能被测试拦下 | ✅ 完成 |
 | O-03 | P2 | environment-detector（身份三级解析、id 失效兜底匹配）无单测，是核心策略 | test/ 目录无该文件测试 | 抽出 EnvironmentApi 依赖接口，用假实现补行为测试 | 身份解析与兜底匹配各分支有测试且通过 | ✅ 完成（13 例） |
 | O-04 | P2 | 已知 lint warning（prefer-setting-definitions）可能影响社区评审 | README §11 已声明 | 提交说明中解释（1.7.2 兼容）；不迁移声明式设置 | 提交材料含解释 | 待提交时 |
-| O-05 | P2 | `saveSettings().then(...)` 无 catch（4 处），落盘失败静默 | main.ts / settings-tab.ts | 统一持久化辅助函数并接住失败、记日志 | 失败可见（log/Diagnostics） | 待实施 |
+| O-05 | P2 | `saveSettings().then(...)` 无 catch（4 处），落盘失败静默 | main.ts / settings-tab.ts | saveSettings 作为单一持久化漏斗：try/catch + 记日志 + Notice，永不 reject，调用点链路自动安全 | 失败可见（log/Notice） | ✅ 完成 |
+| O-14 | P2 | internal-api 适配层（F-022 最高风险层）无单测 | test/ 目录无该文件测试 | 构造器改收导出的结构化 `AppInternals`（免 cast），补 remote 发现链/能力分级/DOM 兜底/插件命令 shim 测试 | 各分支有测试且通过 | ✅ 完成（12 例） |
 | O-06 | P2 | onEvaluate 命令在高频事件下可能频繁触发（仅 resize/move 有去抖） | rule-engine/state-manager 语义 | 全局命令最小间隔限流（产品行为变更） | 需用户确认语义后实施 | 待确认 |
 | O-07 | P2 | "卸载/禁用后不恢复受管插件状态"是用户痛点 | README Limitations；对标 Control Center/Plugins-Toggler 都做备份恢复 | 设计"受管状态备份/恢复"功能（v0.2 候选） | 需用户确认恢复语义后立项 | 待确认 |
 | O-08 | P3 | 规则列表不能直接调 priority/排序，须进编辑器 | ui/rule-list.ts | 借鉴 Auto Switch Sidebar 拖拽排序 | 可拖拽或上下移 | 待实施 |
@@ -26,18 +27,24 @@
 
 ## 迭代记录
 
-### 2026-10-23　基线摸底 + 功能账簿 + 首批优化（O-01/02/03/10/12/13 + O-09 文档化）
+### 2026-10-23　第一批：基线摸底 + 功能账簿 + 首批优化（O-01/02/03/09/10/12/13）
 
 - **目标**：建立功能账簿；官方文档/同类项目调研；有证据的问题清单；实施首批低风险优化。
-- **完成**：`docs/FEATURE_LEDGER.md`（F-001~F-031）；`docs/TECHNICAL_REFERENCES.md`（R1~R6）；本清单；O-01/02/03/10/12/13 实施。
+- **完成**：`docs/FEATURE_LEDGER.md`（F-001~F-031）；`docs/TECHNICAL_REFERENCES.md`（R1~R6）；本清单；O-01/02/03/10/12/13 实施。提交：c74cf8c / 3c108ed / 62b62a5 / 456c327（4 个原子提交）。
 - **关键文件**：manifest.json、package.json、src/core/environment-detector.ts（抽 EnvironmentApi 接口）、test/environment-detector.test.ts、test/manifest.test.ts（新增）、src/ui/{rule-editor,settings-tab,diagnostics-view}.ts、src/main.ts、README.md、docs/*。
 - **方案要点**：EnvironmentDetector 依赖由具体类 `InternalApi` 改为结构化接口 `EnvironmentApi`（依赖倒置，便于假实现测试，运行时行为不变）。
-- **验证**：`npm run verify`（typecheck + eslint + stylelint + vitest + build）。结果见本文件末尾"验证记录"。
+- **验证**：`npm run verify` 全绿（vitest 60/60）。详见"验证记录"。
 - **未解决**：O-04~O-08、O-11；多显示器真机场景（TEST-PLAN E/D/S 系列）全部待硬件。
+
+### 2026-10-23　第二批：落盘失败可见 + internal-api 测试（O-05/O-14）
+
+- **完成**：saveSettings 单一持久化漏斗（try/catch + log + Notice，永不 reject）；internal-api 构造器改收导出的 `AppInternals` 并补 12 例测试（remote 三级发现、能力分级、DOM 兜底、插件/命令 shim）。
+- **验证**：`npm run verify` 全绿（vitest 72/72）。
 
 ## 验证记录
 
 - 2026-10-23 修改前基线：`npm run verify` 全绿（vitest 41/41；eslint 1 已知 warning）。
 - 2026-10-23 修改后：`npm run verify` 全绿——typecheck ✓、eslint ✓（仍 1 条已知 warning，无新增）、stylelint ✓、vitest **60/60**（新增 environment-detector 13 例、manifest 6 例）、build ✓。
 - 负向验证：manifest description 恢复 "Obsidian" 后 `test/manifest.test.ts` 的禁词用例如期失败，改回后通过（O-02 验收达成）。
-- 未执行：Obsidian 真机加载验证（本环境无法启动 Obsidian）；改动集中在测试/文档/无行为变化的清理，唯一行为变化是 Diagnostics 刷新时机（O-10，评估完成后统一刷新，禁用时也会刷新一次），建议真机点一次 "Evaluate now" 确认。
+- 2026-10-23 第二批（O-05/O-14）：`npm run verify` 全绿——vitest **72/72**（新增 internal-api 12 例）、eslint 仍仅 1 条已知 warning（期间引入过 1 条 sentence-case 警告，已按规则改写 Notice 文案消除）。
+- 未执行：Obsidian 真机加载验证（本环境无法启动 Obsidian）；行为变化有两处建议真机过一遍：Diagnostics 的 "Evaluate now" 刷新时机（O-10）、落盘失败时的 Notice 提示（O-05，需磁盘异常场景）。
