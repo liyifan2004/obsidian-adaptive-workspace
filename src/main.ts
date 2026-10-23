@@ -1,4 +1,4 @@
-import { Plugin } from "obsidian";
+import { Notice, Plugin } from "obsidian";
 import { debounce, type DebouncedFunction } from "./utils/debounce";
 import { PluginLog } from "./utils/logging";
 import {
@@ -140,8 +140,18 @@ export default class AdaptiveWorkspacePlugin
     }
   }
 
+  /**
+   * Single persistence funnel. Never rejects: a failed write must not break
+   * UI handlers, but it must be visible (Diagnostics log + notice) instead of
+   * failing silently (CHANGELOG_DEV O-05).
+   */
   async saveSettings(): Promise<void> {
-    await this.saveData(toPersisted(this.pluginSettings));
+    try {
+      await this.saveData(toPersisted(this.pluginSettings));
+    } catch (e) {
+      this.log.error("Failed to save settings", String(e));
+      new Notice("Failed to save settings — see the diagnostics log");
+    }
   }
 
   /* ---------------- evaluation pipeline ---------------- */
