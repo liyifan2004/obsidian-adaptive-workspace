@@ -1,7 +1,7 @@
 {
   "name": "obsidian-adaptive-workspace",
   "version": "0.1.0",
-  "description": "Automatically adapt your Obsidian workspace based on display, window, and environment.",
+  "description": "Automatically adapt your workspace based on display, window, and environment.",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
