@@ -1,4 +1,3 @@
-import type { App } from "obsidian";
 import type { ApiProbe, CapabilityTier, Rect } from "../types/environment";
 
 /**
@@ -72,7 +71,8 @@ interface CommandsLike {
   executeCommandById?(id: string): boolean | void;
 }
 
-interface AppInternals {
+/** Structural slice of `App` this adapter consumes (tests provide fakes). */
+export interface AppInternals {
   plugins?: PluginsLike;
   commands?: CommandsLike;
 }
@@ -145,7 +145,7 @@ export class InternalApi {
   private readonly browserWindow: ElectronBrowserWindowLike | null = null;
   private probeCache: ApiProbe | null = null;
 
-  constructor(app: App) {
+  constructor(app: AppInternals) {
     this.appInternals = app;
     const found = findRemote();
     this.remote = found.remote;
