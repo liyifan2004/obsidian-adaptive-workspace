@@ -5,16 +5,38 @@ import type {
   DisplayInfo,
   EnvironmentState,
   ObsidianInfo,
+  Rect,
   WindowState,
 } from "../types/environment";
 import { matchDisplay } from "./geometry";
-import type { InternalApi, ElectronDisplayLike } from "./internal-api";
+import type {
+  DisplayEventHandlers,
+  ElectronDisplayLike,
+  WindowEventHandlers,
+  WindowStateSnapshot,
+} from "./internal-api";
 
 export interface DetectorEventHandlers {
   /** High-frequency geometry change (resize/move) — caller debounces. */
   onGeometryChange: () => void;
   /** Discrete change (window state / displays) — caller may evaluate sooner. */
   onDiscreteChange: () => void;
+}
+
+/**
+ * The slice of InternalApi the detector needs. Declared consumer-side so
+ * tests can supply a fake without casting; `InternalApi` satisfies it
+ * structurally at the construction site in main.ts.
+ */
+export interface EnvironmentApi {
+  getDisplays(): ElectronDisplayLike[];
+  getPrimaryDisplay(): ElectronDisplayLike | null;
+  getDisplayMatching(rect: Rect): ElectronDisplayLike | null;
+  getWindowBounds(): Rect;
+  getWindowState(): WindowStateSnapshot;
+  isRemoteAvailable(): boolean;
+  subscribeWindowEvents(handlers: WindowEventHandlers): () => void;
+  subscribeDisplayEvents(handlers: DisplayEventHandlers): () => void;
 }
 
 /**
@@ -27,7 +49,7 @@ export class EnvironmentDetector {
   private matchNote = "";
 
   constructor(
-    private readonly api: InternalApi,
+    private readonly api: EnvironmentApi,
     private readonly getSettings: () => Settings,
     private readonly getObsidianInfo: () => ObsidianInfo,
   ) {}
