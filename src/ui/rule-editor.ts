@@ -37,8 +37,6 @@ export class RuleEditorModal extends Modal {
   private conditionsEl!: HTMLElement;
   private actionsEl!: HTMLElement;
   private errorEl!: HTMLElement;
-  private readonly conditionRows: HTMLElement[] = [];
-  private readonly actionRows: HTMLElement[] = [];
 
   constructor(
     app: App,
@@ -138,10 +136,8 @@ export class RuleEditorModal extends Modal {
 
   private renderConditions(): void {
     this.conditionsEl.empty();
-    this.conditionRows.length = 0;
     for (const condition of this.draft.conditions) {
       const row = this.conditionsEl.createDiv({ cls: "aw-row" });
-      this.conditionRows.push(row);
       this.renderConditionRow(row, condition);
     }
   }
@@ -261,10 +257,8 @@ export class RuleEditorModal extends Modal {
 
   private renderActions(): void {
     this.actionsEl.empty();
-    this.actionRows.length = 0;
     for (const action of this.draft.actions) {
       const row = this.actionsEl.createDiv({ cls: "aw-row" });
-      this.actionRows.push(row);
       this.renderActionRow(row, action);
     }
   }

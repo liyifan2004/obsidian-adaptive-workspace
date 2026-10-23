@@ -169,8 +169,10 @@ export default class AdaptiveWorkspacePlugin
         await this.stateManager.apply(result, {
           runCommandsOnStartup: this.pluginSettings.runCommandsOnStartup,
         });
-        this.refreshDiagnostics();
       }
+      // Refresh once per pass, after the final state is known. Runs even when
+      // evaluation is disabled so Diagnostics still shows a fresh snapshot.
+      this.refreshDiagnostics();
     } catch (e) {
       this.log.error("Evaluation failed", String(e));
     } finally {

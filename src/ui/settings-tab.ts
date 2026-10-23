@@ -74,7 +74,6 @@ export class AdaptiveSettingTab extends PluginSettingTab {
     const settings = this.host.pluginSettings;
     containerEl.empty();
 
-    ;
     containerEl.createEl("p", {
       text: "Automatically adapt your Obsidian workspace based on your display, window, and environment.",
       cls: "aw-desc",

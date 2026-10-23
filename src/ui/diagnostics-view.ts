@@ -62,8 +62,9 @@ export class DiagnosticsView extends ItemView {
 
     new Setting(el).addButton((b) =>
       b.setButtonText("Evaluate now").setCta().onClick(() => {
+        // The evaluation pipeline calls refreshDiagnostics() when it finishes,
+        // which re-renders every DiagnosticsView — no timer needed here.
         this.host.runEvaluateNow();
-        window.setTimeout(() => this.render(), 200);
       }),
     );
 
