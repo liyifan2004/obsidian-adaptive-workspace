@@ -110,6 +110,6 @@
 
 ## 四、已知限制（测试时注意）
 
-1. 本环境无法启动 Obsidian，全部 [待验证] 项需真机完成；[自动化] 项 36 条用例已随 `npm run verify` 通过。
+1. 本环境无法启动 Obsidian，全部 [待验证] 项需真机完成；[自动化] 项全部单元测试已随 `npm run verify` 通过（用例数量以 `npm run test` 输出为准）。
 2. 内部 API（`app.plugins` / `app.commands` / remote）行为依赖具体 Obsidian 版本，真机验证时记录 Obsidian 版本号。
 3. 卸载插件后受管插件状态残留为预期行为（ADR 0007），测试后手动恢复测试 vault 状态。

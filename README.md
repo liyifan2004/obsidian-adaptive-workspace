@@ -103,6 +103,8 @@ All conditions support operators: equals, not Equals, >, >=, <, <= (boolean/enum
 
 **Cross-display windows.** The matched display is the one with the largest intersection area with the window; when a secondary display overlaps significantly, the window is marked `spanning`. The Diagnostics view shows the matched display and the match method.
 
+**Rules without conditions.** A rule with zero conditions always matches. The rule editor requires at least one condition, so such rules can only come from hand-edited `data.json`; they are kept for forward compatibility, not as a recommended pattern.
+
 ## 8. Supported Actions
 
 | Action | Kind | Behavior |
