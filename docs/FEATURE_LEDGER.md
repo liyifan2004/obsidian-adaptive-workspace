@@ -42,6 +42,7 @@
 | F-030 | 命令 open-diagnostics | 命令面板 | 已实现·已验证 | 真机 |
 | F-031 | 日志环形缓冲（evaluate 50 / plugin 200） | Diagnostics | 已实现·已验证 | 自动化（间接） |
 | F-032 | 提交一致性校验（manifest/版本） | npm run test | 已实现·已验证 | 自动化（含负向验证） |
+| F-033 | 受管插件状态备份/恢复 | 无（设计中） | 待实现 | — |
 
 ---
 
@@ -50,12 +51,12 @@
 ### F-001 环境状态快照（EnvironmentState）
 - **用户价值**：规则判定的唯一事实来源，含检测方式标注，问题可诊断。
 - **用户入口**：无直接入口；Diagnostics 展示。
-- **预期行为**：`getState()` 每次采集显示器、窗口、Obsidian 信息并计算 `signature`（含 display id/identity/窗口 bounds/state/spanning/activeFile 等，用于一致性比较）。采集失败时取 DOM 兜底值而非抛异常。
-- **实现位置**：`src/core/environment-detector.ts`（getState、computeSignature）；`src/types/environment.ts`。
-- **依赖与约束**：F-022（InternalApi）、F-002、F-003。`signature` 目前**未被消费**（仅生成）。
-- **状态**：已实现；签名计算未单测。
+- **预期行为**：`getState()` 每次采集显示器、窗口、Obsidian 信息。采集失败时取 DOM 兜底值而非抛异常。（曾含 `signature` 一致性签名字段，因无消费者且"签名去重"会弱化 ADR 0001 再强制收敛而删除，见 ADR 0008/优化清单 O-11。）
+- **实现位置**：`src/core/environment-detector.ts`（getState）；`src/types/environment.ts`。
+- **依赖与约束**：F-022（InternalApi）、F-002、F-003。
+- **状态**：已实现。
 - **验证方式**：间接经 rule-engine/state-manager 测试；真机 S7/S10 待验证。
-- **已知问题**：`signature` 为预留字段，无调用方（可作去重优化，也可能是死代码，见优化清单）。
+- **已知问题**：无。
 - **关联**：F-002、F-003、F-005。
 
 ### F-002 窗口-显示器归属与跨屏判定
@@ -201,12 +202,12 @@
 ### F-015 Command Event Action
 - **用户价值**：进入某环境时执行命令（如专注模式）。
 - **用户入口**：规则动作 Execute Command + trigger 下拉。
-- **预期行为**：trigger `onEnter`（默认）仅在规则进入边沿执行一次；`onEvaluate` 每次匹配评估都执行（在 F-016 抑制规则内）。命令不存在/被 checkCallback 拒绝 → warning 不崩溃；抛异常 → 捕获记录。
-- **实现位置**：`actions/command-action.ts`；`state-manager.ts` Event Actions 段；`action-executor.ts` executeCommand。
+- **预期行为**：trigger `onEnter`（默认）仅在规则进入边沿执行一次；`onEvaluate` 每次匹配评估都执行，但同一命令受最小间隔限流（`ON_EVALUATE_MIN_INTERVAL_MS` 2000ms 内至多一次，超出的合并为间隔末补跑一次；手动评估绕过并取消排队补跑，ADR 0008）——均在 F-016 抑制规则内。命令不存在/被 checkCallback 拒绝 → warning 不崩溃；抛异常 → 捕获记录。
+- **实现位置**：`actions/command-action.ts`；`state-manager.ts` Event Actions 段 + 限流/补跑（lastCommandRunAt/trailingQueue）；`action-executor.ts` executeCommand。
 - **依赖与约束**：`app.commands.executeCommandById`（内部 API）。
 - **状态**：已实现·已验证。
-- **验证方式**：自动化（A2/A6）。
-- **已知问题**：`onEvaluate` 与高频事件组合可能频繁执行命令（去抖 300ms 仅缓解 resize/move）；Toggle 命令结果依赖未知现态（F-027 提示，无法根治）。
+- **验证方式**：自动化（A2/A6 + 限流 5 例：deferred 补跑、按命令独立、手动绕过并取消排队、onEnter 不限流、dispose 取消 timer）。
+- **已知问题**：`onEvaluate` 严格意义上不再是"每轮评估都执行"（间隔内合并，语义已在 ADR 0008/README 声明）；间隔值为常量不可配（O-15 候选）。Toggle 命令结果依赖未知现态（F-027 提示，无法根治）。
 - **关联**：F-012、F-016、F-017。
 
 ### F-016 启动首轮命令抑制
@@ -248,6 +249,17 @@
 - **验证方式**：自动化（ledger 记录用例）。
 - **已知问题**：台账不持久化，重启后 Diagnostics 无法回答"上次动过谁"（用户需自行恢复状态的场景下信息缺失）。
 - **关联**：F-013、F-028。
+
+### F-033 受管插件状态备份/恢复（v0.2 设计，待实现）
+- **用户价值**：禁用/卸载本插件后受管插件状态可回到"被管理前"，消除 README Limitations 的最大痛点（对标 Control Center / Plugins-Toggler，见 TECHNICAL_REFERENCES R4）。
+- **用户入口**：（设计）命令面板显式恢复命令 + 可选"禁用本插件时自动恢复"开关。
+- **预期行为**：（设计稿）①baseline 采集：首次对某插件执行 enable/disable 动作前记录其当时状态（managedBaseline）；②恢复语义：显式命令按 baseline 逐个恢复并清空 baseline；③自动恢复为可选项（默认关）；④崩溃/强退无法保证恢复（只能尽力），Obsidian 正常退出时 onunload 可恢复但存在写盘竞态；⑤与 ADR 0005 `persist` 预留字段同属"状态生命周期"主题，实现时一并考虑"仅会话"动作。
+- **实现位置**：未实现（设计决策记录于 CHANGELOG_DEV O-07，2026-10-23 立项）。
+- **依赖与约束**：F-013（动作执行）、F-019（台账）、F-020（持久化 schema 需扩 managedBaseline + 版本迁移）。
+- **状态**：**待实现**（v0.2 候选）。
+- **验证方式**：—。
+- **已知问题**：恢复语义有争议面（手动改过的插件要不要覆盖？），实现前需用户确认最终语义。
+- **关联**：F-013、F-019、F-020。
 
 ## D. 配置与持久化
 
@@ -309,11 +321,11 @@
 ### F-025 规则列表
 - **用户价值**：一眼看清规则语义与状态。
 - **用户入口**：设置页 Rules 区。
-- **预期行为**：按 priority 降序展示名称+语义摘要（summarizeRule）、启停 toggle、编辑、删除（二次确认写明条件/动作数量与不可撤销）。变更保存后立即重评估。
-- **实现位置**：`ui/rule-list.ts`。
+- **预期行为**：按 priority 降序展示名称+语义摘要（summarizeRule）、启停 toggle、上/下移按钮（交换相邻规则 priority，同 priority 时交换数组平局顺序；边界禁用）、编辑、删除（二次确认写明条件/动作数量与不可撤销）。变更保存后立即重评估。
+- **实现位置**：`ui/rule-list.ts`；`utils/rule-order.ts` moveRule（纯函数，含单测）。
 - **状态**：已实现·部分验证。
-- **验证方式**：真机。
-- **已知问题**：无法在列表内拖动排序或改 priority（须进编辑器）；删除不可撤销且无导出备份（MVP 范围内已声明不做导入导出）。
+- **验证方式**：moveRule 纯函数 6 例自动化（跨优先级交换、同优先级平局换位、边界/未知 id 同实例 no-op、不可变性、逐级移动）；按钮 UI 真机待验证。
+- **已知问题**：暂不支持拖拽排序（上下移按钮已达同等目的、键盘可访问）；删除不可撤销且无导出备份（MVP 范围内已声明不做导入导出）。
 - **关联**：F-026。
 
 ### F-026 规则编辑器（schema 驱动）
@@ -349,8 +361,8 @@
 ### F-029 命令 evaluate-now
 - **用户价值**：手动立即生效（如刚改完规则）。
 - **用户入口**：命令面板 "Evaluate workspace rules now"。
-- **预期行为**：取消挂起去抖并立即评估一次。
-- **实现位置**：`main.ts` runEvaluateNow。
+- **预期行为**：取消挂起去抖并立即评估一次；作为显式用户意图**绕过 onEvaluate 限流**并取消已排队的补跑（ADR 0008）。
+- **实现位置**：`main.ts` runEvaluateNow（manual 标志经 runEvaluate 传入 state-manager.apply）。
 - **状态**：已实现·已验证（真机）。
 - **已知问题**：无。
 
@@ -389,3 +401,4 @@
 - 真机已验证：单屏窗口链路、去抖、三态独立、重启幂等、单屏 identity（TEST-PLAN 零节，2026-09-09/09-29）。多显示器场景（D7/D8、E1~E6、S1~S10）**全部待验证**——需外接显示器硬件。
 - 2026-10-23（首批优化后）：新增 test/environment-detector.test.ts（13 例，F-003/F-004/F-001/F-002）与 test/manifest.test.ts（6 例，F-032），vitest 60/60 通过；F-023/F-026/F-028 已知问题随修复更新；F-013 的 `persist` 字段改按 ADR 0005"预留"表述。
 - 2026-10-23（第二批）：新增 test/internal-api.test.ts（12 例，F-022），vitest 72/72 通过；F-022/F-023 验证与已知问题随修复更新。
+- 2026-10-23（第三批）：state-manager 限流补跑（F-015，5 例新测试）、moveRule（F-025，6 例新测试）、删除 `signature`（F-001），vitest **83/83** 通过；F-001/F-015/F-025/F-029 同步更新，新增 F-033（待实现设计）。

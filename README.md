@@ -111,10 +111,10 @@ All conditions support operators: equals, not Equals, >, >=, <, <= (boolean/enum
 | --- | --- | --- |
 | Enable plugin | State | Desired state, applied via diff; persisted with `enablePluginAndSave` |
 | Disable plugin | State | Desired state, applied via diff; persisted with `disablePluginAndSave` |
-| Execute command | Event | Fires once when a rule enters its matching state (edge-triggered) |
+| Execute command | Event | `onEnter`: fires once when a rule enters its matching state (edge-triggered). `onEvaluate`: fires on every matching evaluation (rate-limited, see below) |
 
 - **State actions** are declarative: the engine only acts when actual ≠ desired, so re-evaluation is idempotent.
-- **Command actions** are edge-triggered: they fire on rule-enter, not on every evaluation. By default commands do **not** run on the first (startup) evaluation; enable *Run commands on startup* in settings if you want that.
+- **Command actions** use one of two triggers. `onEnter` (default) is edge-triggered: it fires on rule-enter, not on every evaluation. `onEvaluate` fires on every matching evaluation, but the same command runs at most once per 2 seconds — repeats are merged into a single follow-up run at the end of the window, so the final state always gets executed. Running *Evaluate workspace rules now* manually bypasses this limit. By default commands do **not** run on the first (startup) evaluation; enable *Run commands on startup* in settings if you want that.
 - Toggle-style commands are flagged with a warning in the picker (their result depends on unknown current state).
 - If one command fails, the remaining actions still run.
 
@@ -132,7 +132,7 @@ Open via the command palette → *Adaptive Workspace: Open environment diagnosti
 ## 10. Limitations
 
 - **Internal APIs.** Enabling/disabling plugins and executing commands by id are not part of Obsidian's public plugin API. Adaptive Workspace accesses them through a single, clearly-marked internal-API layer (`src/core/internal-api.ts`). Future Obsidian updates may change or remove these internals and break the plugin's plugin/command actions. The Diagnostics view shows the current capability tier so breakage is visible, not silent.
-- **Managed state persists after disable/uninstall.** While Adaptive Workspace is enabled it manages plugin states per your rules; when you disable or uninstall it, rules stop running and the plugin states produced so far are kept as-is — nothing is restored (there is no "initial state" to restore to after repeated environment switches and manual changes). Check *Diagnostics → Managed Plugins* and restore anything you need manually. A restore mechanism may come as a separately designed feature in a future version.
+- **Managed state persists after disable/uninstall.** While Adaptive Workspace is enabled it manages plugin states per your rules; when you disable or uninstall it, rules stop running and the plugin states produced so far are kept as-is — nothing is restored (there is no "initial state" to restore to after repeated environment switches and manual changes). Check *Diagnostics → Managed Plugins* and restore anything you need manually. A backup/restore mechanism is designed as a v0.2 candidate feature (see `docs/FEATURE_LEDGER.md` F-033) but not implemented yet.
 - **Manual changes are re-enforced.** If you manually toggle a plugin that a rule manages, the next evaluation restores the rule's desired state. This is by design (rules are declarative); disable the rule first if you want a manual change to stick.
 - **Self-protection.** A rule can never disable Adaptive Workspace itself.
 - **No mobile support.** Display/window detection relies on Electron desktop APIs.
