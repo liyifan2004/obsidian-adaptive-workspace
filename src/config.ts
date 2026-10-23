@@ -4,6 +4,14 @@ export const PLUGIN_ID = "adaptive-workspace";
 /** Debounce for high-frequency window events (resize / move), in milliseconds. */
 export const EVALUATE_DEBOUNCE_MS = 300;
 
+/**
+ * Minimum interval between two executions of the SAME command triggered by
+ * `onEvaluate` (CHANGELOG_DEV O-06, ADR 0008). Deferred executions run once
+ * in a trailing pass so the final state is never lost. Manual evaluation
+ * ("Evaluate workspace rules now") bypasses the limit.
+ */
+export const ON_EVALUATE_MIN_INTERVAL_MS = 2000;
+
 /** How many evaluate records the diagnostics log keeps. */
 export const EVALUATE_LOG_SIZE = 50;
 

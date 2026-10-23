@@ -52,6 +52,8 @@ export default class AdaptiveWorkspacePlugin
 
   private running = false;
   private pending = false;
+  /** A manual ("Evaluate now") request is queued — bypasses the onEvaluate rate limit. */
+  private manualPending = false;
   private lastState: EnvironmentState | null = null;
   private lastResult: EvaluationResult | null = null;
 
@@ -90,6 +92,7 @@ export default class AdaptiveWorkspacePlugin
       PLUGIN_ID,
     );
     this.stateManager = new StateManager(executor, this.log);
+    this.register(() => this.stateManager.dispose());
 
     // Event wiring: debounced for geometry, immediate for discrete changes.
     this.debouncedEvaluate = debounce(() => {
@@ -156,13 +159,16 @@ export default class AdaptiveWorkspacePlugin
 
   /* ---------------- evaluation pipeline ---------------- */
 
-  private async runEvaluate(): Promise<void> {
+  private async runEvaluate(manual = false): Promise<void> {
     this.pending = true;
+    if (manual) this.manualPending = true;
     if (this.running) return;
     this.running = true;
     try {
       while (this.pending) {
         this.pending = false;
+        const isManual = this.manualPending;
+        this.manualPending = false;
         if (!this.pluginSettings.enabled) {
           this.log.info("Adaptive Workspace is disabled — skipping evaluation");
           continue;
@@ -178,6 +184,7 @@ export default class AdaptiveWorkspacePlugin
         this.lastResult = result;
         await this.stateManager.apply(result, {
           runCommandsOnStartup: this.pluginSettings.runCommandsOnStartup,
+          manual: isManual,
         });
       }
       // Refresh once per pass, after the final state is known. Runs even when
@@ -192,7 +199,7 @@ export default class AdaptiveWorkspacePlugin
 
   runEvaluateNow(): void {
     this.debouncedEvaluate?.cancel();
-    void this.runEvaluate();
+    void this.runEvaluate(true);
   }
 
   /* ---------------- UI host: settings tab ---------------- */
