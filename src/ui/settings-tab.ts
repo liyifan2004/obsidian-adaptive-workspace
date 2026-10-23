@@ -6,6 +6,7 @@ import type { ConditionRegistry } from "../conditions/condition-registry";
 import type { ActionRegistry } from "../actions/action-registry";
 import type { CommandLike, PluginManifestLike } from "../core/internal-api";
 import { renderRuleList } from "./rule-list";
+import { moveRule } from "../utils/rule-order";
 
 export interface DisplayRowInfo {
   id: number;
@@ -205,6 +206,15 @@ export class AdaptiveSettingTab extends PluginSettingTab {
       },
       onDelete: (rule) => {
         settings.rules = settings.rules.filter((r) => r.id !== rule.id);
+        void this.host.saveSettings().then(() => {
+          this.host.runEvaluateNow();
+          this.refresh();
+        });
+      },
+      onMove: (rule, direction) => {
+        const next = moveRule(settings.rules, rule.id, direction);
+        if (next === settings.rules) return; // boundary no-op
+        settings.rules = next;
         void this.host.saveSettings().then(() => {
           this.host.runEvaluateNow();
           this.refresh();

@@ -3,11 +3,13 @@ import type { Rule } from "../types/rule";
 import type { ConditionRegistry } from "../conditions/condition-registry";
 import type { ActionRegistry } from "../actions/action-registry";
 import type { Operator } from "../types/condition";
+import type { MoveDirection } from "../utils/rule-order";
 
 export interface RuleListCallbacks {
   onEdit(rule: Rule): void;
   onToggle(rule: Rule, enabled: boolean): void;
   onDelete(rule: Rule): void;
+  onMove(rule: Rule, direction: MoveDirection): void;
 }
 
 class ConfirmDeleteModal extends Modal {
@@ -95,10 +97,20 @@ export function renderRuleList(
     return;
   }
   const sorted = [...rules].sort((a, b) => b.priority - a.priority);
-  for (const rule of sorted) {
+  sorted.forEach((rule, index) => {
     const setting = new Setting(container).setName(rule.name).setDesc(summarizeRule(rule, conditions, actions));
     setting.addToggle((t) => {
       t.setValue(rule.enabled).onChange((v) => callbacks.onToggle(rule, v));
+    });
+    setting.addExtraButton((b) => {
+      b.setIcon("arrow-up").setTooltip("Move up (raise priority)");
+      b.setDisabled(index === 0);
+      b.onClick(() => callbacks.onMove(rule, "up"));
+    });
+    setting.addExtraButton((b) => {
+      b.setIcon("arrow-down").setTooltip("Move down (lower priority)");
+      b.setDisabled(index === sorted.length - 1);
+      b.onClick(() => callbacks.onMove(rule, "down"));
     });
     setting.addExtraButton((b) => {
       b.setIcon("pencil");
@@ -118,5 +130,5 @@ export function renderRuleList(
         ).open();
       });
     });
-  }
+  });
 }
