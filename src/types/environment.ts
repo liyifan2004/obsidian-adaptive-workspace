@@ -60,8 +60,6 @@ export interface EnvironmentState {
   display: DisplayInfo;
   window: WindowInfo;
   obsidian: ObsidianInfo;
-  /** Stable signature of the state; used to skip redundant work. */
-  signature: string;
 }
 
 export type CapabilityTier = "full" | "degraded" | "limited";

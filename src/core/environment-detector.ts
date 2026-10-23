@@ -90,7 +90,7 @@ export class EnvironmentDetector {
           ? "maximized"
           : "normal";
 
-    const environmentState: EnvironmentState = {
+    return {
       display: displayInfo,
       window: {
         bounds,
@@ -104,10 +104,7 @@ export class EnvironmentDetector {
         matchNote: this.matchNote,
       },
       obsidian: this.getObsidianInfo(),
-      signature: "",
     };
-    environmentState.signature = computeSignature(environmentState);
-    return environmentState;
   }
 
   subscribe(handlers: DetectorEventHandlers): () => void {
@@ -215,24 +212,6 @@ function findAssignment(settings: Settings, display: ElectronDisplayLike) {
       a.scaleFactor === display.scaleFactor,
   );
   return candidates.length === 1 ? candidates[0] : undefined;
-}
-
-function computeSignature(s: EnvironmentState): string {
-  return JSON.stringify({
-    d: s.display.id,
-    i: s.display.identity,
-    m: s.display.detectionMethod,
-    x: s.window.bounds.x,
-    y: s.window.bounds.y,
-    w: s.window.bounds.width,
-    h: s.window.bounds.height,
-    st: s.window.state,
-    sp: s.window.spanning,
-    sf: s.display.scaleFactor,
-    rw: s.display.size.width,
-    rh: s.display.size.height,
-    f: s.obsidian.activeFile,
-  });
 }
 
 export type { DisplayDetectionMethod, DisplayIdentity };

@@ -28,6 +28,5 @@ export function makeState(overrides?: Partial<EnvironmentState["window"]>): Envi
       ...overrides,
     },
     obsidian: { vault: "test", theme: "dark", activeFile: null },
-    signature: "",
   };
 }
