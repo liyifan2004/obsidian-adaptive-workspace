@@ -1,0 +1,50 @@
+# CI for Obsidian Adaptive Workspace.
+#
+# The plugin has a real test suite (83 cases) and a lint setup, but until
+# this workflow existed the suite only ran inside the release workflow —
+# i.e. only when a version tag was pushed. Every other push went unchecked.
+#
+# This runs the project's own gate (`npm run verify`) on every push and
+# pull request, so regressions surface on the branch that introduced them
+# rather than at release time.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint (eslint-plugin-obsidianmd)
+        run: npm run lint
+
+      - name: Lint styles (stylelint-config-obsidianmd)
+        run: npm run lint:styles
+
+      - name: Tests
+        run: npm run test
+
+      - name: Build
+        run: npm run build
