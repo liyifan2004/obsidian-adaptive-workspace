@@ -57,3 +57,39 @@
 - 2026-10-23 第二批（O-05/O-14）：`npm run verify` 全绿——vitest **72/72**（新增 internal-api 12 例）、eslint 仍仅 1 条已知 warning（期间引入过 1 条 sentence-case 警告，已按规则改写 Notice 文案消除）。
 - 2026-10-23 第三批（O-06/O-08/O-11）：`npm run verify` 全绿——vitest **83/83**（新增限流 5 例、rule-order 6 例）、eslint 仍仅 1 条已知 warning（期间引入 2 条 prefer-window-timers，已消除）。
 - 未执行：Obsidian 真机加载验证（本环境无法启动 Obsidian）；行为变化有两处建议真机过一遍：Diagnostics 的 "Evaluate now" 刷新时机（O-10）、落盘失败时的 Notice 提示（O-05，需磁盘异常场景）。第三批新增真机待验：规则上/下移按钮交互、onEvaluate 限流在真实拖动下的频率（O-06/O-08）。
+
+## 2026-11-05 · lint 覆盖范围补全到整个仓库
+
+**背景**：在 obsidian-jev-inbox-router 上发现一类问题 —— **eslint 配置写了、规则装了，但没人跑**。
+本轮复查全 fleet 的 lint 接入情况时，发现本仓库有**同型的另一面**：
+`lint` 脚本是 `eslint src test`，只点名两处，于是根目录的 `package.json`
+完全游离在外 —— 而官方规则里有 `validate-manifest` 与 `validate-license`，
+专门检查 manifest.json 与 package.json 的字段是否合法。没人检它，改坏了也不会被 CI 拦下。
+
+**完成内容**：
+
+1. **lint 范围从 `src test` 扩到整个仓库**：`eslint .`。
+   实测覆盖文件数 **39 → 47**，新增 `package.json`、`version-sync.d.mts` 等。
+2. **改用 `globalIgnores`**（官方推荐的写法，替代原来零散的 `ignores` 块）：
+   `main.js`（esbuild 产物）、`*.config.mjs` / `*.config.mts`（构建期配置）、
+   `version-*.mjs`（构建期脚本）、`docs/**`、`scripts/**`。
+   这些不是插件源码，拿插件规则审只会得到假告警，
+   而且它们不进发布产物（商店只下载 main.js / manifest.json / styles.css）。
+3. **补 test/ 的规则豁免块**（与 folio / jev / MSE 同构）：
+   `no-unsupported-api` 只比对「API 的 `@since` 版本 vs manifest 的 `minAppVersion`」，
+   **不理解 `requireApiVersion(...)` 这样的运行时守卫**；
+   `no-deprecated` 在测试里要直接替换 `display()` 来断言刷新路径。
+   两者都不进发布产物。
+
+**扩展覆盖立刻抓到了东西**：改成 `eslint .` 后第一次运行报了 1 个 warning ——
+`settings-tab/prefer-setting-definitions`：**本插件的设置页没有实现
+`getSettingDefinitions()`**，所以 1.13+ 的用户在 Obsidian 设置搜索里
+**搜不到本插件的任何设置项**，商店审查也会记一条 Warning。
+
+这与 obsidian-jev-inbox-router 是**同型问题**（本轮已在那里完成双轨改造）。
+同 fleet 的 obsidian-folio / obsidian-media-speed-enhancer / obsidian-mineru
+都已实现，本仓库是唯一剩下的。
+
+**验证**：`npm run verify` 全绿（typecheck + lint 0 error + stylelint + vitest 99/99 + build）。
+
+**待办**：按 jev 的 RowSink 模式给本插件的设置页做双轨改造（声明式 + 命令式 fallback）。
