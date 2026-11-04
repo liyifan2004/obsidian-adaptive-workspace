@@ -93,3 +93,64 @@
 **验证**：`npm run verify` 全绿（typecheck + lint 0 error + stylelint + vitest 99/99 + build）。
 
 **待办**：按 jev 的 RowSink 模式给本插件的设置页做双轨改造（声明式 + 命令式 fallback）。
+
+## 2026-11-05（续做）：设置页接入声明式 API 双轨
+
+**背景**：上一条记录里，`eslint .` 扩展覆盖后报出的唯一 warning 是
+`settings-tab/prefer-setting-definitions` —— **本插件的设置页没有实现
+`getSettingDefinitions()`**。这与 obsidian-jev-inbox-router 是**同型问题**：
+1.13+ 的用户在 Obsidian 设置搜索里**搜不到本插件的任何设置项**，
+商店审查也会记一条 Warning。
+
+同 fleet 的 obsidian-folio / obsidian-media-speed-enhancer / obsidian-mineru
+都已实现，本仓库是唯一剩下的。
+
+**完成内容**：
+
+1. **实现 `getSettingDefinitions()`**（`src/ui/settings-tab.ts`）：
+   - 4 个 group：主开关组、「显示身份」、「规则」、诊断组。
+   - 纯值项（主开关、启动时执行命令）用 `render` 挂控件 ——
+     **刻意不用 `control`**：声明式的 `control` 由框架自动读写，
+     但它产出的行结构与命令式路径不同，两边就对不齐了。
+     统一用 `render` 后，两条路径跑的是同一批实现。
+   - 依赖实时状态的部分（「显示身份」要读当前接了几块屏）**只能放在 `render` 里** ——
+     `getSettingDefinitions()` 会在每次 `update()` 时被重新调用，必须保持廉价。
+   - 覆写 `getControlValue` / `setControlValue`：本插件的设置存在 host 里
+     （`host.pluginSettings`），不是 `plugin.settings`。
+     「改了设置要做什么」（保存 + 必要时重新评估）集中在这一个出口。
+2. **`display()` 降为旧版 fallback**：命令式渲染体抽到 `renderImperative()`；
+   `refresh()` 按 `requireApiVersion("1.13.0")` 分流 —— 1.13+ 用官方刷新 API
+   `update()`，旧版重跑命令式渲染。
+3. **两条路径共用同一批节实现**：`renderDisplaySection` / `renderRuleSection`
+   接收的是「宿主行的 controlEl」，两条路径都经由它。
+   内容画在**自建的宿主行**里，让两条路径的行结构完全一致。
+4. **新增双轨一致性测试 11 例**（`test/settings-tab.test.ts`）：
+   断言两条路径产出的**行集合**、**分组标题集合**一致，
+   以及「每个 render 都返回 undefined」「自定义块画进的是还活着的容器」。
+   配套新增 `test/mocks/obsidian.ts`（Obsidian 桩）与 vitest 的 `obsidian` alias。
+
+**关键决策**：
+- **只用 `infoEl.empty()`，不用 `settingEl.empty()`**：
+  Obsidian 的 `Setting` 结构是 `settingEl > (infoEl, controlEl)`，
+  `empty()` 整个 `settingEl` 会把 `controlEl` 一起清掉（它已被移出 DOM），
+  之后往 `controlEl` 画的内容**不会出现在页面上**。
+  这是从 obsidian-jev-inbox-router 那边学到的（那边真的踩了这个坑）。
+- **mock 必须模拟真实的对象关系**：桩里的 `settingEl` / `controlEl` / `infoEl`
+  如果是三个互相独立的对象，就查不出「容器已脱离」这类缺陷。
+  所以 `makeStubElement()` 跟踪子节点，`empty()` 把子节点标记为已脱离。
+
+**反证（3 次，全部成功）**：
+- 命令式路径少渲染一整节 → 双轨一致性用例失败
+- 让 `render` 回调返回 Setting 对象 → 「每一项都返回 undefined」用例失败
+  （对应真实事故：Obsidian 1.13 会把 render 的返回值当清理函数调用 →
+  `TypeError: t is not a function` → 设置子页面永远打不开）
+- 把 `infoEl.empty()` 改回 `settingEl.empty()` → 「内容画进的是还活着的容器」用例失败
+
+**测试**：`npm run verify` 全绿（typecheck + lint 0 问题 + stylelint + vitest 110/110 + build）；
+99 → 110 用例。
+
+**未解决/风险**：
+- **未在真实 Obsidian 中实机验证**（本环境无 GUI）。双轨在 1.13+ 与旧版上的
+  实际渲染效果、以及自定义块在 group 内的布局，需要实机确认。
+- 声明式路径下「显示身份」「规则」两节的宿主行由 Obsidian 渲染，
+  其样式与命令式路径的 `setHeading()` 行可能不同（未实机比对）。
