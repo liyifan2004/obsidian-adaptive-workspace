@@ -1,166 +1,44 @@
 # Adaptive Workspace
 
-Automatically adapt your Obsidian workspace based on display, window, and environment — with a general rule engine (Condition → Rule → Action), not a screen-size-only tool.
+<p align="center"><b>Automatically adapt your Obsidian workspace based on display, window, and environment — with a general rule engine, not a screen-size-only tool.</b></p>
 
-## 1. What is Adaptive Workspace
+## Features
 
-Adaptive Workspace watches where your Obsidian window is (which display, what window state) and applies the workspace you want there. You declare rules such as *"when on an external display and maximized, enable plugin X and disable plugin Y"*, and the plugin keeps the actual state matching the desired state.
-
-It is built on a rule engine:
-
-```
-Current State + Rules → Desired State → Diff → Execute necessary actions
-```
-
-Actions run only when the actual state differs from the desired state. Nothing is toggled repeatedly on every event.
-
-## 2. Features
-
-- **Display conditions**: internal / external identity, display ID, resolution, scale factor.
-- **Window conditions**: Normal / Maximized / Fullscreen (three independent states), window width / height.
-- **Actions**: Enable plugin, Disable plugin, Execute command (chosen from registered commands).
-- **Conflict resolution**: overlapping rules merge by priority; a single evaluation never produces an ON→OFF intermediate.
+- **[Display conditions](docs/user-guide.md#display)**: internal / external identity, display ID, resolution, scale factor.
+- **[Window conditions](docs/user-guide.md#window)**: Normal / Maximized / Fullscreen (three independent states), window width / height.
+- **[Actions](docs/user-guide.md#supported-actions)**: enable plugin, disable plugin, execute command.
+- **[Conflict resolution](docs/user-guide.md#rule-examples)**: overlapping rules merge by priority; a single evaluation never produces an ON→OFF intermediate.
 - **Event-driven**: reacts to display and window changes, with debouncing for noisy events (resize/move).
-- **Diagnostics view**: display detection, window state, rule matching, and managed-plugin status in one place.
-- **Safe by design**: never modifies other plugins' code or Obsidian core configuration.
+- **[Diagnostics view](docs/user-guide.md#diagnostics)**: display detection, window state, rule matching, and managed-plugin status in one place.
 
-## 3. Use Cases
+## Use cases
 
 - Docked at a desk: enable your multi-pane / external-monitor plugin set; undocked: disable it to keep the laptop clean.
 - Maximized or fullscreen: run a "focus mode" command; back to windowed: run the inverse.
-- Big external monitor: enable plugins that only make sense with screen space (graph, kanban, sliders); small internal screen: turn them off.
+- Big external monitor: enable plugins that only make sense with screen space; small internal screen: turn them off.
 
-## 4. Screenshots
+## Installation
 
-*(placeholder — screenshots will be added before the community release)*
+In Obsidian, open **Settings → Community plugins → Browse**, search for `Adaptive Workspace`, install and enable it.
 
-- Settings: rule list and rule editor
-- Diagnostics: display / window / rules / managed plugins
-- Settings: display identity assignment (Auto / Internal / External)
+Manual installation: download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/liyifan2004/obsidian-adaptive-workspace/releases/latest), drop them into `.obsidian/plugins/adaptive-workspace/`, then reload Obsidian.
 
-## 5. Installation
+Requires Obsidian 1.7.2+ on desktop (Windows / macOS / Linux). Mobile is not supported.
 
-### From the community plugin browser (after release)
+## Important limitations
 
-1. Open Settings → Community plugins → Browse.
-2. Search for **Adaptive Workspace**.
-3. Install and enable.
+These are the two that will bite you first — the full list is in the [user guide](docs/user-guide.md#limitations).
 
-### Manual installation
+- **It uses Obsidian internal APIs.** Enabling/disabling plugins and executing commands by id are not part of the public plugin API. Future Obsidian updates may change or remove these internals and break the plugin's actions. The Diagnostics view shows the current capability tier so breakage is visible, not silent.
+- **Managed plugin states are not restored.** When you disable or uninstall this plugin, the plugin states it produced stay as-is. Check *Diagnostics → Managed Plugins* and restore anything you need manually.
 
-1. Download `main.js`, `manifest.json`, `styles.css` from the release page.
-2. Create a folder `<vault>/.obsidian/plugins/adaptive-workspace/`.
-3. Copy the three files into it.
-4. Enable the plugin in Settings → Community plugins.
+## Documentation
 
-Requires Obsidian 1.7.2+ on desktop (Windows / macOS / Linux). Mobile is not supported (`isDesktopOnly`).
+- [User guide](docs/user-guide.md) — rule examples, supported conditions and actions, diagnostics, full limitations
+- [Architecture](docs/ARCHITECTURE.md)
+- [Changelog](https://github.com/liyifan2004/obsidian-adaptive-workspace/releases)
+- [Issue tracker](https://github.com/liyifan2004/obsidian-adaptive-workspace/issues)
 
-## 6. Rule Examples
+## License
 
-**Example 1 — external display setup**
-
-- Condition: Display · Identity · equals · External
-- Action: Enable plugin `obsidian-git`
-- Action: Disable plugin `sliding-panes-obsidian-plugin`
-
-**Example 2 — focus mode on maximize**
-
-- Condition: Window · State · equals · Maximized
-- Action: Execute command `toggle-zen`
-
-**Example 3 — big screen, wide window**
-
-- Condition: Display · Width (px) · gte · 2560
-- Condition: Window · Width (px) · gte · 1800 *(rule match mode: AND)*
-- Action: Enable plugin `obsidian-kanban`
-
-Rule priority resolves conflicts: when two matching rules disagree about a plugin, the higher-priority rule wins (ties go to the rule earlier in the list).
-
-## 7. Supported Conditions
-
-All conditions support operators: equals, not Equals, >, >=, <, <= (boolean/enum properties support equals / not Equals only).
-
-**Display**
-
-| Property | Type | Notes |
-| --- | --- | --- |
-| Identity | enum | Internal / External / Unknown (see below) |
-| Is internal display | boolean | Identity `unknown` never matches internal/external checks |
-| Display ID | number | Electron display id |
-| Resolution width / height | number | Physical pixels |
-| Scale factor | number | DPI scaling |
-
-**Window**
-
-| Property | Type | Notes |
-| --- | --- | --- |
-| Window state | enum | Normal / Maximized / Fullscreen / Minimized (three primary states are independent) |
-| Is maximized | boolean | |
-| Is fullscreen | boolean | Never conflated with maximized |
-| Window width / height | number | Logical pixels |
-
-**Display identity detection.** Identity is resolved in order: (1) manual assignment in settings (Internal / External / Auto per display), (2) Electron's `display.internal` flag when reliable, (3) a clearly-labeled heuristic. When identity cannot be determined it is `unknown`, and the plugin refuses to guess: internal/external conditions simply do not match.
-
-**Cross-display windows.** The matched display is the one with the largest intersection area with the window; when a secondary display overlaps significantly, the window is marked `spanning`. The Diagnostics view shows the matched display and the match method.
-
-**Rules without conditions.** A rule with zero conditions always matches. The rule editor requires at least one condition, so such rules can only come from hand-edited `data.json`; they are kept for forward compatibility, not as a recommended pattern.
-
-## 8. Supported Actions
-
-| Action | Kind | Behavior |
-| --- | --- | --- |
-| Enable plugin | State | Desired state, applied via diff; persisted with `enablePluginAndSave` |
-| Disable plugin | State | Desired state, applied via diff; persisted with `disablePluginAndSave` |
-| Execute command | Event | `onEnter`: fires once when a rule enters its matching state (edge-triggered). `onEvaluate`: fires on every matching evaluation (rate-limited, see below) |
-
-- **State actions** are declarative: the engine only acts when actual ≠ desired, so re-evaluation is idempotent.
-- **Command actions** use one of two triggers. `onEnter` (default) is edge-triggered: it fires on rule-enter, not on every evaluation. `onEvaluate` fires on every matching evaluation, but the same command runs at most once per 2 seconds — repeats are merged into a single follow-up run at the end of the window, so the final state always gets executed. Running *Evaluate workspace rules now* manually bypasses this limit. By default commands do **not** run on the first (startup) evaluation; enable *Run commands on startup* in settings if you want that.
-- Toggle-style commands are flagged with a warning in the picker (their result depends on unknown current state).
-- If one command fails, the remaining actions still run.
-
-## 9. Diagnostics
-
-Open via the command palette → *Adaptive Workspace: Open environment diagnostics*. Sections:
-
-- **Capability**: which Obsidian/Electron APIs are reachable (including the internal-API tier).
-- **Display**: detected displays, identity, detection method (manual / electron-flag / heuristic).
-- **Window**: state, size, matched display, spanning flag, match method.
-- **Rules**: each rule's match result; conflicting losers are recorded as overridden.
-- **Managed Plugins**: every plugin this plugin has enabled/disabled — its desired state and last known actual state.
-- **Evaluate Log / Plugin Log**: recent evaluations and events.
-
-## 10. Limitations
-
-- **Internal APIs.** Enabling/disabling plugins and executing commands by id are not part of Obsidian's public plugin API. Adaptive Workspace accesses them through a single, clearly-marked internal-API layer (`src/core/internal-api.ts`). Future Obsidian updates may change or remove these internals and break the plugin's plugin/command actions. The Diagnostics view shows the current capability tier so breakage is visible, not silent.
-- **Managed state persists after disable/uninstall.** While Adaptive Workspace is enabled it manages plugin states per your rules; when you disable or uninstall it, rules stop running and the plugin states produced so far are kept as-is — nothing is restored (there is no "initial state" to restore to after repeated environment switches and manual changes). Check *Diagnostics → Managed Plugins* and restore anything you need manually. A backup/restore mechanism is designed as a v0.2 candidate feature (see `docs/FEATURE_LEDGER.md` F-033) but not implemented yet.
-- **Manual changes are re-enforced.** If you manually toggle a plugin that a rule manages, the next evaluation restores the rule's desired state. This is by design (rules are declarative); disable the rule first if you want a manual change to stick.
-- **Self-protection.** A rule can never disable Adaptive Workspace itself.
-- **No mobile support.** Display/window detection relies on Electron desktop APIs.
-- **MVP scope.** Two condition types (Display, Window) and three actions only. The condition/action provider registry is built for extension, but arbitrary code evaluation is deliberately out of scope.
-- **Not modifying anything outside.** The plugin does not modify other plugins' code, settings files of other plugins, or Obsidian core configuration. It only flips plugin enable/disable state and runs commands that Obsidian itself registered.
-
-## 11. Development
-
-```bash
-npm install
-npm run dev      # watch build
-npm run verify   # typecheck + eslint + stylelint + test + build (all must pass)
-npm run sync     # copy build output into a test vault (edit scripts/sync-to-vault.mjs)
-```
-
-Lint uses `eslint-plugin-obsidianmd` and `stylelint-config-obsidianmd` (the same rule set as the community-store review bot). One warning is accepted and tracked: `settings-tab/prefer-setting-definitions` — the declarative settings API requires Obsidian 1.13+, while this plugin supports 1.7.2+.
-
-Project layout: `src/core` (environment detection, rule engine, state manager, internal API), `src/conditions` / `src/actions` (typed providers), `src/ui` (settings, rule editor, diagnostics), `test/` (vitest unit tests). Architecture decisions are recorded in `docs/adr/`. See `docs/ARCHITECTURE.md` and `docs/TEST-PLAN.md`.
-
-## 12. Contributing
-
-Issues and PRs are welcome. Please:
-
-1. Run `npm run verify` before submitting; it must be green.
-2. Add or extend unit tests for behavior changes.
-3. Record non-obvious architectural decisions as an ADR in `docs/adr/`.
-4. Do not expand scope to arbitrary code execution in rules (see Limitations).
-
-## 13. License
-
-MIT. See [LICENSE](LICENSE).
+[MIT](LICENSE)
