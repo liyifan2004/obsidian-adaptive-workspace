@@ -39,7 +39,7 @@ export const displayConditionDef: ConditionDef = {
     },
     {
       key: "width",
-      label: "Resolution width (px)",
+      label: "Resolution width (DIP)",
       kind: "number",
       operators: [...NUMERIC_OPERATORS],
       defaultOperator: "gte",
@@ -47,7 +47,7 @@ export const displayConditionDef: ConditionDef = {
     },
     {
       key: "height",
-      label: "Resolution height (px)",
+      label: "Resolution height (DIP)",
       kind: "number",
       operators: [...NUMERIC_OPERATORS],
       defaultOperator: "gte",

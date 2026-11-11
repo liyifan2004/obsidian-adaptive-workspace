@@ -363,7 +363,7 @@ export class AdaptiveSettingTab extends PluginSettingTab {
       const setting = new Setting(body)
         .setName(display.label)
         .setDesc(
-          `ID ${display.id} · ${display.size.width}×${display.size.height} · ` +
+          `ID ${display.id} · ${display.size.width}×${display.size.height} DIP · ` +
             `scale ${display.scaleFactor} · current detection: ${DETECTION_LABEL[display.detectionMethod]}`,
         );
       setting.addDropdown((d) => {

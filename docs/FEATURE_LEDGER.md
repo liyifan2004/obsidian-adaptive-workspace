@@ -129,7 +129,7 @@
 ### F-008 Display 条件
 - **用户价值**：按屏身份/规格触发规则。
 - **用户入口**：规则编辑器 → Display。
-- **预期行为**：属性 identity（enum）、internal（boolean，unknown 恒 false）、id/width/height/scaleFactor（number 六运算符）。width/height 取 `display.size`（物理像素）。
+- **预期行为**：属性 identity（enum）、internal（boolean，unknown 恒 false）、id/width/height/scaleFactor（number 六运算符）。width/height 取 `display.size`（**DIP**，设备无关像素 —— Electron 的 screen 模块按 DIP 报，物理像素 = DIP × `display.scaleFactor`）。
 - **实现位置**：`conditions/display-condition.ts`。
 - **状态**：已实现·已验证。
 - **验证方式**：自动化（含 unknown 不匹配用例）；真机 D5/D6 部分。

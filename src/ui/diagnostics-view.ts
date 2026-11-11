@@ -90,7 +90,7 @@ export class DiagnosticsView extends ItemView {
       row(el, "Detection method", d.detectionMethod);
       row(el, "Electron internal flag", d.electronInternal === null ? "n/a" : bool(d.electronInternal));
       row(el, "Bounds", `${d.bounds.x}, ${d.bounds.y}, ${d.bounds.width}×${d.bounds.height}`);
-      row(el, "Resolution", `${d.size.width}×${d.size.height}`);
+      row(el, "Resolution (DIP)", `${d.size.width}×${d.size.height}`);
       row(el, "Work area", `${d.workArea.width}×${d.workArea.height}`);
       row(el, "Scale Factor", String(d.scaleFactor));
     } else {
