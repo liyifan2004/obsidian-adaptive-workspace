@@ -1,7 +1,7 @@
 {
 	"id": "adaptive-workspace",
 	"name": "Adaptive Workspace",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"minAppVersion": "1.7.2",
 	"description": "Automatically adapt your workspace based on display, window, and environment.",
 	"author": "liyifan2004",
