@@ -23,8 +23,45 @@
 | O-12 | P3 | rule-editor 死状态（conditionRows/actionRows 只写不读）、settings-tab 孤立分号 | 源码 | 删除 | lint/test 绿 | ✅ 完成 |
 | O-13 | P3 | TEST-PLAN 用例计数过时（写 36，实际 41+） | test/ 实跑结果 | 改为不写死数字 | 文档与实际一致 | ✅ 完成 |
 | O-15 | P3 | onEvaluate 限流间隔为常量（2s），不可按需调整 | config.ts ON_EVALUATE_MIN_INTERVAL_MS | 如有用户反馈再改为按动作配置 | — | 候选 |
+| O-16 | P2 | 设置页开场说明只存在于命令式路径，1.13+ 的用户看不到 | src/ui/settings-tab.ts 的 `renderImperative()` 有 `containerEl.createEl("p", …)`，`getSettingDefinitions()` 里没有对应项 | 开场说明改成顶层自定义块（官方类型允许顶层就是一条含 `render` 的定义），两条路径共用同一段文案 | 两条路径都出现且只出现一次 | ✅ 完成（2026-11-13） |
 
 未发现 P0 级问题。无数据丢失、崩溃或关键功能不可用的证据。
+
+## 2026-11-13 · 声明式路径的开场说明（O-16）
+
+上一轮（第十七轮）在其它 4 个插件里查出并修掉了「声明式路径缺少命令式路径的能力」
+这类缺陷。本轮把同一套检查推广到本插件。
+
+### 查出的缺陷
+
+开场说明（"Automatically adapt your Obsidian workspace based on your display,
+window, and environment."）只在命令式路径 `renderImperative()` 里，
+通过 `containerEl.createEl("p", …)` 画出来 —— 声明式路径没有对应项。
+
+**用户影响**：1.13+ 的用户打开设置页第一眼看到的是「Enable adaptive workspace」
+的开关，而不是「这插件会做什么」的答案。
+
+### 修法
+
+官方类型 `SettingDefinitionItem` 允许顶层就是一条含 `render` 的定义
+（`SettingDefinition`），它会渲染成「所有分组上方的一行」。
+开场说明改成顶层块，命令式路径也改走同样的宿主行结构 —— 两条路径共用同一段文案。
+
+### 顺带补强了测试桩
+
+原来的 mock 有两个盲区：
+
+1. `createEl` 不记录创建出来的元素 → **说明段落查不出来**
+   （说明段落不进 `Setting` 桩的记录，只看 Setting 就找不到它）。
+   现在记录 tag / 文本 / 类名。
+2. `Setting` 桩不把自己挂到父容器 → 父容器上看不到这一行，
+   「内容画在哪个容器里」也查不出来。现在挂上。
+
+### 验证
+
+测试 110 → 113（新增 3 例：命令式有、声明式有、两条路径各出现一次）。
+反证：移除声明式路径的开场说明块 → 3 例失败。
+`npm run verify`（typecheck + lint + stylelint + test + build）全通过。
 
 ## 迭代记录
 

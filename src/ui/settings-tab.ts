@@ -91,6 +91,32 @@ export class AdaptiveSettingTab extends PluginSettingTab {
   override getSettingDefinitions(): SettingDefinitionItem[] {
     return [
       {
+        // 开场说明段。
+        //
+        // 官方类型 `SettingDefinitionItem` 允许顶层就是一条含 `render` 的定义
+        // （`SettingDefinition`），它会渲染成「所有分组上方的一行」。
+        //
+        // 2026-11-12 修复：这段说明此前只存在于命令式路径（`renderImperative`
+        // 里 `containerEl.createEl("p", …)`），1.13+ 的用户看不到 ——
+        // 而它正是设置页要回答的第一个问题（这插件会做什么）。
+        name: "About",
+        desc: "Automatically adapt your Obsidian workspace based on your display, window, and environment.",
+        searchable: false,
+        render: (setting: Setting) => {
+          // **只清 infoEl，不清 settingEl**：
+          // Obsidian 的 Setting 结构是 `settingEl > (infoEl, controlEl)`，
+          // empty() 整个 settingEl 会把 controlEl 一起清掉（它已被移出 DOM），
+          // 之后往 controlEl 画的内容不会出现在页面上。
+          setting.infoEl.empty();
+          setting.controlEl.createEl("p", {
+            text: "Automatically adapt your Obsidian workspace based on your display, window, and environment.",
+            cls: "aw-desc",
+          });
+          // 显式返回 undefined：Obsidian 会把 render 的返回值当「行销毁前的
+          // 清理函数」调用，返回非函数值会抛 TypeError（设置页永远打不开）。
+        },
+      },
+      {
         type: "group",
         items: [
           {
@@ -261,7 +287,12 @@ export class AdaptiveSettingTab extends PluginSettingTab {
     const settings = this.host.pluginSettings;
     containerEl.empty();
 
-    containerEl.createEl("p", {
+    // 开场说明占一个**宿主行**，内容画在 controlEl 里 ——
+    // 与声明式路径的结构完全一致，两条路径的行集合才能对上。
+    // （此前这里直接往 containerEl 里 createEl，两条路径形态不同。）
+    const introHost = new Setting(containerEl).setName("About");
+    introHost.infoEl.empty();
+    introHost.controlEl.createEl("p", {
       text: "Automatically adapt your Obsidian workspace based on your display, window, and environment.",
       cls: "aw-desc",
     });

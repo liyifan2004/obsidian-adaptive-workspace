@@ -62,10 +62,35 @@ export function makeStubElement(): HTMLElement {
     __children: [] as unknown[],
     /** 是否已被 empty() 脱离 */
     __detached: false,
+    /**
+     * 创建出来的元素记录（tag / 文本 / 类名）。
+     *
+     * 没有它就查不出「某段说明文字只存在于一条渲染路径」这类缺陷 ——
+     * 说明段落是 createEl("p", …) 画出来的，不进 Setting 桩的记录。
+     */
+    __created: [] as Array<{ tag: string; text: string; cls: string }>,
   };
-  el.createEl = () => makeStubElement();
-  el.createDiv = () => makeStubElement();
-  el.createSpan = () => makeStubElement();
+
+  /** 记录一个被创建出来的元素。 */
+  const record = (tag: string, opts?: { text?: string; cls?: string }): HTMLElement => {
+    const child = makeStubElement();
+    const created = (child as unknown as {
+      __created: Array<{ tag: string; text: string; cls: string }>;
+    }).__created;
+    created.push({
+      tag,
+      text: opts?.text ?? "",
+      cls: opts?.cls ?? "",
+    });
+    // 挂到父节点，模拟真实 DOM 的父子关系。
+    const children = el.__children as unknown[];
+    children.push(child);
+    return child;
+  };
+
+  el.createEl = (tag: string, opts?: { text?: string; cls?: string }) => record(tag, opts);
+  el.createDiv = (opts?: { text?: string; cls?: string }) => record("div", opts);
+  el.createSpan = (opts?: { text?: string; cls?: string }) => record("span", opts);
   return el as unknown as HTMLElement;
 }
 
@@ -188,6 +213,14 @@ export class Setting {
     const children = (this.settingEl as unknown as { __children?: unknown[] }).__children;
     if (children) {
       children.push(this.infoEl, this.controlEl);
+    }
+    // 整行挂到传入的父容器上（真实 Obsidian 的行为）。
+    // 不挂的话，父容器上看不到这一行 ——
+    // 「说明段落画在哪个容器里」这类问题就查不出来。
+    const parent = el as { __children?: unknown[] } | undefined;
+    const parentChildren = parent?.__children;
+    if (parentChildren) {
+      parentChildren.push(this.settingEl);
     }
   }
 
