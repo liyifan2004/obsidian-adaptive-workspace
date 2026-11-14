@@ -290,8 +290,15 @@ export class AdaptiveSettingTab extends PluginSettingTab {
     // 开场说明占一个**宿主行**，内容画在 controlEl 里 ——
     // 与声明式路径的结构完全一致，两条路径的行集合才能对上。
     // （此前这里直接往 containerEl 里 createEl，两条路径形态不同。）
-    const introHost = new Setting(containerEl).setName("About");
-    introHost.infoEl.empty();
+    //
+    // **不要清 infoEl**（2026-11-15 实测修正）：
+    // Obsidian 的 `Setting` 结构是 `infoEl > (nameEl, descEl)`，
+    // `infoEl.empty()` 会把 nameEl 一起清掉 —— 标题文字从 DOM 里消失，
+    // 1.8.7–1.12 的用户看到的是一段没有标题的内容。
+    // 留着 infoEl 让标题留在信息列（实测：标题 15px/600，与 Obsidian 自己的
+    // 分组标题同级），正文画在 controlEl 里（实测：信息列 118px / 控制列 550px，
+    // 标题与正文分行排列，不会挤在一起）。
+    const introHost = new Setting(containerEl).setName("About").setHeading();
     introHost.controlEl.createEl("p", {
       text: "Automatically adapt your Obsidian workspace based on your display, window, and environment.",
       cls: "aw-desc",
@@ -328,15 +335,25 @@ export class AdaptiveSettingTab extends PluginSettingTab {
     // 内容画在宿主的 controlEl 里 —— 与声明式路径的结构完全一致。
     // 两条路径结构一致，「两条路径等价」这个不变量才能被断言守住。
     //
-    // **只清 infoEl，不清 settingEl** —— Obsidian 的 Setting 结构是
+    // **不要清 settingEl** —— Obsidian 的 Setting 结构是
     // `settingEl > (infoEl, controlEl)`，empty() 整个 settingEl 会把 controlEl
     // 一起清掉（它已被移出 DOM），之后往 controlEl 画的内容不会出现在页面上。
+    //
+    // **但 infoEl 也不能清**（2026-11-15 实测修正）：
+    // Obsidian 的 `Setting` 构造函数里 `nameEl` 是 `infoEl` 的**子节点** ——
+    // `infoEl > (nameEl, descEl)`。`infoEl.empty()` 会把 nameEl 一起清掉，
+    // 于是标题文字从 DOM 里消失，1.8.7–1.12 的用户看到的是一段没有标题的内容。
+    // 实测：清空后该行可见文本只剩正文。
+    //
+    // 修法是**留着 infoEl**（标题留在信息列），正文画在 controlEl 里。
+    // 实测布局：信息列 118px / 控制列 550px，标题与正文分行排列。
+    // 官方 eslint 规则 `settings-tab/no-manual-html-headings` 也要求
+    // 用 `setName(...).setHeading()` 而不是手写 `<h3>` —— 两种写法都被它认可，
+    // 但只有这一种能同时保住标题。
     const displayHost = new Setting(containerEl).setName("Display identity").setHeading();
-    displayHost.infoEl.empty();
     this.renderDisplaySection(displayHost.controlEl, settings);
 
     const ruleHost = new Setting(containerEl).setName("Rules").setHeading();
-    ruleHost.infoEl.empty();
     this.renderRuleSection(ruleHost.controlEl, settings);
 
     new Setting(containerEl)

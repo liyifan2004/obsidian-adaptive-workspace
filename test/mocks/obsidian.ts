@@ -13,6 +13,23 @@
 export const __createdSettings: Setting[] = [];
 
 /**
+ * 所有被创建出来的元素（tag / 文本 / 类名），跨元素收集。
+ *
+ * 每个元素自己的 `__created` 只记它**直接**创建的子节点 ——
+ * 标题画在 controlEl 里、内容画在更深的容器里，
+ * 断言「页面上有哪些标题」需要跨容器边界收集全部可见文字。
+ *
+ * 没有它就查不出「某段说明文字只存在于一条渲染路径」这类缺陷 ——
+ * 说明段落是 createEl("p", …) 画出来的，不进 Setting 桩的记录。
+ */
+export const __created: Array<{ tag: string; text: string; cls: string }> = [];
+
+/** 清空全局记录（测试之间互不干扰）。 */
+export function __resetCreated(): void {
+  __created.length = 0;
+}
+
+/**
  * 造一个「什么都不做但什么方法都有」的元素桩。
  *
  * 设置页会 createEl / createDiv / createSpan / setAttribute / addClass ……
@@ -47,6 +64,9 @@ export function makeStubElement(): HTMLElement {
         (child as { __detached?: boolean }).__detached = true;
       }
       (el.__children as unknown[]).length = 0;
+      // 记下「这个容器被清空过」—— Setting 用它来发现
+      // 「标题行的 infoEl 被清掉 → 标题从页面上消失」这类缺陷。
+      (el as unknown as { __emptied?: boolean }).__emptied = true;
     },
     querySelector: () => null,
     querySelectorAll: () => [],
@@ -82,6 +102,7 @@ export function makeStubElement(): HTMLElement {
       text: opts?.text ?? "",
       cls: opts?.cls ?? "",
     });
+    __created.push({ tag, text: opts?.text ?? "", cls: opts?.cls ?? "" });
     // 挂到父节点，模拟真实 DOM 的父子关系。
     const children = el.__children as unknown[];
     children.push(child);
@@ -204,6 +225,21 @@ export class Setting {
   infoEl: HTMLElement = makeStubElement();
   /** settingEl —— 整行的容器。 */
   settingEl: HTMLElement = makeStubElement();
+  /**
+   * infoEl 有没有被清空过。
+   *
+   * **真实的 Obsidian 里 `nameEl` 是 `infoEl` 的子节点**
+   * （构造函数的结构是 `infoEl > (nameEl, descEl)`），
+   * 所以 `infoEl.empty()` 会把标题文字一起清掉 ——
+   * 用户在页面上就看不到这一行的标题了。
+   *
+   * 2026-11-15 在真实 Obsidian 1.15.1 里实测过这一点。
+   * 桩以前不建模这层父子关系，于是 `infoEl.empty()` 对标题毫无影响，
+   * 「标题被清掉」这类缺陷对所有断言都隐形。
+   */
+  get infoElCleared(): boolean {
+    return (this.infoEl as unknown as { __emptied?: boolean }).__emptied === true;
+  }
 
   constructor(public el: unknown) {
     __createdSettings.push(this);
@@ -213,6 +249,13 @@ export class Setting {
     const children = (this.settingEl as unknown as { __children?: unknown[] }).__children;
     if (children) {
       children.push(this.infoEl, this.controlEl);
+    }
+    // infoEl 里再挂 nameEl / descEl —— 与真实 Obsidian 一致。
+    const infoChildren = (this.infoEl as unknown as { __children?: unknown[] }).__children;
+    if (infoChildren) {
+      const nameEl = makeStubElement();
+      const descEl = makeStubElement();
+      infoChildren.push(nameEl, descEl);
     }
     // 整行挂到传入的父容器上（真实 Obsidian 的行为）。
     // 不挂的话，父容器上看不到这一行 ——

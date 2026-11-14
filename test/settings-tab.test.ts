@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { Setting, __createdSettings, __setApiVersion, makeStubElement } from "./mocks/obsidian";
+import {
+  Setting,
+  __createdSettings,
+  __resetCreated,
+  __setApiVersion,
+  makeStubElement,
+} from "./mocks/obsidian";
 import { AdaptiveSettingTab, type SettingsTabHost } from "../src/ui/settings-tab";
 import { DEFAULT_SETTINGS, type Settings } from "../src/types/settings";
 
@@ -106,6 +112,7 @@ function flattenDefinitions(
 
 beforeEach(() => {
   __createdSettings.length = 0;
+  __resetCreated();
   __setApiVersion(false);
 });
 
@@ -225,17 +232,63 @@ describe("设置页双轨一致性", () => {
     const tab = makeTab(host);
 
     tab.display();
+    // 命令式路径的标题用 setName + setHeading 写 ——
+    // 这是官方 eslint 规则 `settings-tab/no-manual-html-headings` 要求的写法
+    // （手写 `<h3>` 会被判 error）。
+    //
+    // 关键约束（2026-11-15 在真实 Obsidian 1.15.1 里实测）：
+    // **标题行不能调 `infoEl.empty()`**。
+    // Obsidian 的 `Setting` 结构是 `infoEl > (nameEl, descEl)`，
+    // empty() 会把 nameEl 一起清掉 —— 标题文字从 DOM 里消失，
+    // 1.8.7–1.12 的用户看到的是一段没有标题的内容。
     const imperativeHeadings = __createdSettings
       .filter((s) => s.heading)
       .map((s) => s.name)
       .filter((n): n is string => typeof n === "string");
 
-    const groups = (tab.getSettingDefinitions() as { heading?: string; type: string }[])
-      .filter((d) => d.type === "group");
+    const defs = tab.getSettingDefinitions() as {
+      type: string;
+      heading?: string;
+      name?: string;
+    }[];
+    const groups = defs.filter((d) => d.type === "group");
     const declarativeHeadings = groups.map((g) => g.heading ?? "").filter((h) => h !== "");
 
     expect(imperativeHeadings.length).toBeGreaterThan(0);
-    expect(declarativeHeadings.sort()).toEqual(imperativeHeadings.sort());
+    // 分组标题必须一致。
+    expect(declarativeHeadings.sort()).toEqual(
+      imperativeHeadings.filter((h) => h !== "About").sort(),
+    );
+    // 顶层开场说明块（"About"）在声明式路径里是 name 而非 heading ——
+    // 但两条路径都得让用户看见这个标题。
+    const topLevel = defs.find((d) => d.type !== "group");
+    expect(topLevel?.name).toBe("About");
+    expect(imperativeHeadings).toContain("About");
+  });
+
+  it("命令式路径的标题行不清空 infoEl（否则标题会从页面上消失）", () => {
+    // 回归守卫：2026-11-15 实测发现的缺陷。
+    // 旧写法是 `new Setting(...).setName("Display identity").setHeading()`
+    // 再 `infoEl.empty()` —— Obsidian 的 Setting 结构是
+    // `settingEl > (infoEl, controlEl)`、`infoEl > (nameEl, descEl)`，
+    // 所以 empty() 会连带清掉 nameEl，标题文字从 DOM 里消失。
+    // 1.8.7–1.12 的用户看到的是一段没有标题的内容。
+    //
+    // 这条断言的对象是**用户能看到的文字**，不是 Setting 桩的记录。
+    const host = makeHost({ ...DEFAULT_SETTINGS });
+    const tab = makeTab(host);
+
+    __resetCreated();
+    tab.display();
+
+    // 标题行（setHeading）的 infoEl 必须还在 —— 清掉它标题就没了。
+    const headingRows = __createdSettings.filter((s) => s.heading);
+    expect(headingRows.length).toBeGreaterThan(0);
+    for (const row of headingRows) {
+      expect(row.infoElCleared, `标题行 "${row.name}" 清空了 infoEl —— 标题会从页面上消失`).toBe(
+        false,
+      );
+    }
   });
 });
 
