@@ -290,6 +290,59 @@ describe("设置页双轨一致性", () => {
       );
     }
   });
+
+  it("getSettingDefinitions 不读实时状态", () => {
+    // 回归守卫：审计 P2-3。
+    //
+    // 源码注释里写着「本方法必须保持廉价：Obsidian 会在每次 update() 时
+    // 重新调用它。所以这里不能读实时状态（host.listDisplays() 之类）」——
+    // 但这条约束此前没有任何守卫。
+    //
+    // 反证（2026-11-15 实测）：在 getSettingDefinitions() 里调
+    // `this.host.listDisplays()` → 118/118 通过。
+    //
+    // 为什么重要：`listDisplays()` 在 src/core/internal-api.ts 里要跨进程调
+    // Electron remote（账簿标注的「最高风险层」）。放进 getSettingDefinitions()
+    // 意味着每次搜索索引刷新、每次 update() 都同步跨进程调一次。
+    const host = makeHost({ ...DEFAULT_SETTINGS });
+    let displayReads = 0;
+    const original = host.listDisplays.bind(host);
+    host.listDisplays = () => {
+      displayReads += 1;
+      return original();
+    };
+
+    const tab = makeTab(host);
+    tab.getSettingDefinitions();
+
+    expect(
+      displayReads,
+      "getSettingDefinitions() 读了实时状态 —— 每次 update() 都会同步跨进程调一次",
+    ).toBe(0);
+  });
+
+  it("render 回调里才读实时状态", () => {
+    // 与上一条相反：需要实时数据的部分**应该**在 render 回调里求值
+    // （渲染时才求值）。这条断言把它固定下来 ——
+    // 免得有人为了「让 getSettingDefinitions 保持廉价」而把实时数据
+    // 硬编码进定义里。
+    const host = makeHost({ ...DEFAULT_SETTINGS });
+    let displayReads = 0;
+    const original = host.listDisplays.bind(host);
+    host.listDisplays = () => {
+      displayReads += 1;
+      return original();
+    };
+
+    const tab = makeTab(host);
+    const items = flattenDefinitions(tab.getSettingDefinitions());
+    for (const item of items) {
+      if (!item.render) continue;
+      item.render(new Setting(makeStubElement()));
+    }
+
+    expect(displayReads, "render 回调没有读实时状态 —— 显示身份列表会是空的").toBeGreaterThan(0);
+  });
 });
 
 describe("声明式控件的读写", () => {
