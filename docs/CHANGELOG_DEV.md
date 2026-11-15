@@ -24,8 +24,70 @@
 | O-13 | P3 | TEST-PLAN 用例计数过时（写 36，实际 41+） | test/ 实跑结果 | 改为不写死数字 | 文档与实际一致 | ✅ 完成 |
 | O-15 | P3 | onEvaluate 限流间隔为常量（2s），不可按需调整 | config.ts ON_EVALUATE_MIN_INTERVAL_MS | 如有用户反馈再改为按动作配置 | — | 候选 |
 | O-16 | P2 | 设置页开场说明只存在于命令式路径，1.13+ 的用户看不到 | src/ui/settings-tab.ts 的 `renderImperative()` 有 `containerEl.createEl("p", …)`，`getSettingDefinitions()` 里没有对应项 | 开场说明改成顶层自定义块（官方类型允许顶层就是一条含 `render` 的定义），两条路径共用同一段文案 | 两条路径都出现且只出现一次 | ✅ 完成（2026-11-13） |
+| O-17 | P1 | 命令式路径（Obsidian 1.8.7–1.12）的三个分组标题在页面上整行消失 —— 用户看到的是三段没有标题的内容 | Obsidian 的 `Setting` 结构是 `infoEl > (nameEl, descEl)`，nameEl 是 infoEl 的子节点，所以 `infoEl.empty()` 会把标题一起清掉。2026-11-15 在真实 Obsidian 1.15.1 里实测确认（清空后该行可见文本只剩正文） | 标题行不再清 infoEl，正文画在 controlEl 里。标题留在信息列（实测 15px/600，与 Obsidian 自己的分组标题同级），正文在控制列（实测信息列 118px / 控制列 550px，分行排列） | 1.8.7–1.12 的用户能看到「About」「Display identity」「Rules」三个标题 | ✅ 完成（2026-11-15） |
 
 未发现 P0 级问题。无数据丢失、崩溃或关键功能不可用的证据。
+
+## 2026-11-15 · 命令式路径的分组标题不再消失（O-17）
+
+设置页有两条渲染路径：声明式（Obsidian 1.13+，`getSettingDefinitions()`）与
+命令式（1.7.2–1.12，`display()`）。1.13+ 的路径由 Obsidian 自己渲染分组标题，
+命令式路径是本插件手写的 —— 手写的那条路上，三个标题是坏的。
+
+**机制**
+
+Obsidian 的 `Setting` 构造函数（1.15.1 的 `app.js`）：
+
+```js
+let e = this.settingEl = t.createDiv({cls: "setting-item", …}),
+    i = this.infoEl = e.createDiv("setting-item-info");
+this.nameEl = i.createDiv("setting-item-name"),
+this.descEl = i.createDiv("setting-item-description"),
+this.controlEl = e.createDiv("setting-item-control")
+```
+
+**`nameEl` 是 `infoEl` 的子节点。** 所以 `infoEl.empty()` 会把标题一起清掉。
+
+命令式路径当时写的是 `new Setting(...).setName("Display identity").setHeading()`
+再 `infoEl.empty()` —— 标题就这样被自己清掉了。
+
+2026-11-15 在真实 Obsidian 1.15.1 里的受控实测：
+
+```js
+// 清空前
+{"nameWasInInfo": true,  "visibleText": "Display identity"}
+// 清空后
+{"nameStillInInfo": false, "visibleText": ""}    ← 标题没了
+```
+
+**用户影响**：1.7.2–1.12 的用户打开设置页，看到「About」「Display identity」
+「Rules」三段**没有标题的内容** —— 分不清哪段是哪段。
+
+**修法**：标题行不再清 `infoEl`，正文画在 `controlEl` 里。
+标题留在信息列（实测 15px/600，与 Obsidian 自己的分组标题同级），
+正文在控制列（实测信息列 118px / 控制列 550px，标题与正文分行排列）。
+
+**一个坑**
+
+官方 eslint 规则 `settings-tab/no-manual-html-headings` 的自动修复建议是
+`new Setting(...).setName(...).setHeading()` —— **正是会清掉标题的那个写法**。
+第一次尝试改成手写 `<h3>` 被这条规则判 error（3 处），
+说明官方推荐的唯一写法与「保住标题」是冲突的。
+
+最终修法两不冲突：`setName` + `setHeading`，且**不调** `infoEl.empty()`。
+
+**守卫**
+
+测试侧的盲区在 mock：以前 `infoEl` 是个独立元素、不建模子节点结构，
+`empty()` 对 `name` 字符串毫无影响 —— 于是「标题被清掉」这类缺陷对所有断言隐形。
+
+现在 mock 的 `infoEl` 里挂了 `nameEl` / `descEl`，`empty()` 记录一个标记，
+新增断言：标题行的 `infoEl` 不能被清过。
+
+反证（修复前 118 例全绿）：加回 `infoEl.empty()` → 1 例失败；
+删掉命令式路径的标题 → 2 例失败。
+
+测试 113 → 118；`npm run verify` 全通过。
 
 ## 2026-11-13 · 声明式路径的开场说明（O-16）
 
